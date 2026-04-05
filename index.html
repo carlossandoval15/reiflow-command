@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ReiFlow">
+<meta name="theme-color" content="#0a0a0a">
+<title>ReiFlow Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#e8e8e8;min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:#333;border-radius:4px}
+input,textarea,select{font-family:'Inter',sans-serif}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect} = React;
+const C={bg:'#0a0a0a',card:'#1a1a1a',border:'#2a2a2a',gold:'#c9922a',goldL:'#f0d898',goldD:'#8b6914',green:'#22c55e',greenBg:'#0a2a15',red:'#ef4444',redBg:'#2a0a0a',blue:'#3b82f6',blueBg:'#0a1530',orange:'#f97316',orangeBg:'#2a1a0a',ink:'#e8e8e8',inkM:'#999',inkL:'#666',white:'#fff'};
+
+const SURPLUS_LEADS=[
+  {id:'OC-01',address:'Stoughton Property, Orange County',county:'OC',type:'SFR',excess:'$485,714',profit:'$170,000',owner:'Stoughton',phone:'(714) 846-6095',status:'Ready to Call',action:'CALL NOW - $170K profit'},
+  {id:'LA-01',address:'2188 Century Hl, Los Angeles CA 90067',county:'LA',type:'Condo',excess:'$1,136,557',profit:'$397,795',owner:'NEEDS SKIP TRACE',phone:'',status:'Not Contacted',action:'Skip trace - highest value'},
+  {id:'LA-02',address:'2214 Dufour Ave, Redondo Beach CA 90278',county:'LA',type:'Multi-Family',excess:'$878,177',profit:'$307,362',owner:'NEEDS SKIP TRACE',phone:'',status:'Not Contacted',action:'Skip trace'},
+  {id:'LA-03',address:'8116 Broadway Ave, Whittier CA 90606',county:'LA',type:'Multi-Family',excess:'$848,124',profit:'$296,844',owner:'NEEDS SKIP TRACE',phone:'',status:'Not Contacted',action:'Skip trace'},
+  {id:'LA-04',address:'2208 Virginia Rd, Los Angeles CA 90016',county:'LA',type:'SFR',excess:'$665,266',profit:'$232,843',owner:'NEEDS SKIP TRACE',phone:'',status:'Not Contacted',action:'Skip trace'},
+  {id:'LA-05',address:'1930 Tamarind Ave #3, Los Angeles CA 90068',county:'LA',type:'Condo',excess:'$628,145',profit:'$219,851',owner:'NEEDS SKIP TRACE',phone:'',status:'Not Contacted',action:'Skip trace'},
+  {id:'LA-06',address:'631 S Cochran Ave #301, Los Angeles CA 90036',county:'LA',type:'Condo',excess:'$545,050',profit:'$190,768',owner:'NEEDS SKIP TRACE',phone:'',status:'Not Contacted',action:'Skip trace'},
+  {id:'LA-07',address:'6200 S Victoria Ave, Los Angeles CA 90043',county:'LA',type:'SFR',excess:'$484,285',profit:'$169,500',owner:'NEEDS SKIP TRACE',phone:'',status:'Not Contacted',action:'Skip trace'},
+];
+
+const BUYERS=[
+  {type:'RV Parks',count:'13+',names:'KC Savage, Doron Levi, Brandon Harris, Heather Torres',urgent:'Brandon Harris needs West TX park NOW'},
+  {type:'Mobile Home Parks',count:'10+',names:'Doron Levi, Spencer Bishop, Vanny Carmona',urgent:''},
+  {type:'SFH Fix & Flip',count:'15+',names:'Abraham Gray (15/mo ATL), Connor Orcutt, Chris Herrera',urgent:'Abraham Gray always buying'},
+  {type:'SFH Creative/Sub-To',count:'12+',names:'Raphael Locsin, Andrew Butikofer, Casey Gregersen',urgent:''},
+  {type:'Co-Living/PadSplit',count:'12+',names:'Andrew Butikofer, Adam Colburn, Alex/Newly Homes',urgent:''},
+  {type:'Multifamily (5+)',count:'10+',names:'Doron Levi, Veena, Monique Pasciak, Justin Pickell',urgent:''},
+  {type:'Land/Lots',count:'4+',names:'Adam Colburn, Alex/Newly Homes, Adam Catledge',urgent:''},
+  {type:'Hotels/Storage/NNN',count:'6+',names:'Vanny Carmona, Rhea Campbell, Justin Pickell',urgent:''},
+  {type:'Business Acquisitions',count:'6+',names:'Collin Inners, Daniel Chong, Sarah/Christie/Jas',urgent:''},
+];
+
+const URGENT_BUYERS=[
+  {name:'Brandon Harris',contact:'919-621-8431',need:'West TX RV Park 50+ pads 12%+ cap — NEEDS NOW'},
+  {name:'Heather Torres',contact:'heather@cedarstoneteam.com',need:'Any RV/MHP nationwide 50+ — 60-day window'},
+  {name:'Abraham Gray',contact:'(see buyer file)',need:'SFH any condition Atlanta metro — 15 deals/month'},
+];
+
+const Badge=({text,color,bg})=><span style={{fontSize:11,fontWeight:600,padding:'3px 8px',borderRadius:12,background:bg,color,whiteSpace:'nowrap'}}>{text}</span>;
+const StatCard=({label,value,color,icon})=><div style={{background:C.card,borderRadius:12,padding:16,border:`1px solid ${C.border}`,flex:'1 1 140px',minWidth:140}}><div style={{fontSize:12,color:C.inkM,fontWeight:500,marginBottom:4}}>{icon} {label}</div><div style={{fontSize:24,fontWeight:800,color:color||C.white}}>{value}</div></div>;
+
+const Dashboard=()=>{
+  return(<div style={{padding:16,paddingBottom:90}}>
+    <div style={{marginBottom:20}}><h1 style={{fontSize:22,fontWeight:800,color:C.gold}}>ReiFlow Command Center</h1><p style={{fontSize:13,color:C.inkM,marginTop:2}}>Carlos Sandoval — Wholesaling · Surplus Funds · Restaurant Agency</p></div>
+    <div style={{background:'linear-gradient(135deg,#2a1a0a,#1a1000)',border:`1px solid ${C.gold}`,borderRadius:12,padding:16,marginBottom:20}}>
+      <div style={{fontSize:11,fontWeight:700,color:C.gold,marginBottom:4}}>🔥 TOP PRIORITY</div>
+      <div style={{fontSize:15,fontWeight:700,color:C.white}}>CALL Stoughton</div>
+      <a href="tel:7148466095" style={{fontSize:14,color:C.goldL,marginTop:2,display:'block',textDecoration:'none'}}>(714) 846-6095 — $170K profit</a>
+    </div>
+    <div style={{display:'flex',flexWrap:'wrap',gap:10,marginBottom:20}}>
+      <StatCard label="Active Leads" value="64" color={C.blue} icon="📊"/>
+      <StatCard label="Projected Revenue" value="$3.1M" color={C.green} icon="💰"/>
+      <StatCard label="Your 35% Cut" value="$1.09M" color={C.gold} icon="🏆"/>
+      <StatCard label="With Phone" value="1" color={C.green} icon="📱"/>
+      <StatCard label="Need Skip Trace" value="63" color={C.orange} icon="🔍"/>
+      <StatCard label="Calls Today" value="1" color={C.red} icon="📞"/>
+    </div>
+    <h2 style={{fontSize:16,fontWeight:700,color:C.white,marginBottom:10}}>Pipeline</h2>
+    {[{name:'Wholesaling',leads:0,rev:'$0',action:'Add first lead'},{name:'Surplus Funds',leads:64,rev:'$3,112,000',action:'CALL Stoughton'},{name:'Restaurant Agency',leads:0,rev:'$0',action:'Onboard first client'}].map((p,i)=>
+      <div key={i} style={{background:C.card,borderRadius:10,padding:14,marginBottom:8,border:`1px solid ${C.border}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div><div style={{fontSize:14,fontWeight:600,color:C.white}}>{p.name}</div><div style={{fontSize:12,color:C.inkM,marginTop:2}}>{p.action}</div></div>
+        <div style={{textAlign:'right'}}><div style={{fontSize:16,fontWeight:700,color:p.leads>0?C.green:C.inkL}}>{p.leads}</div><div style={{fontSize:11,color:C.inkM}}>{p.rev}</div></div>
+      </div>
+    )}
+  </div>);
+};
+
+const SurplusLeads=()=>{
+  const [search,setSearch]=useState('');
+  const [filter,setFilter]=useState('all');
+  const [leads,setLeads]=useState(()=>{const s=localStorage.getItem('rf_leads');return s?JSON.parse(s):SURPLUS_LEADS;});
+  const [expanded,setExpanded]=useState(null);
+  useEffect(()=>{localStorage.setItem('rf_leads',JSON.stringify(leads));},[leads]);
+  const upd=(idx,f,v)=>{const c=[...leads];c[idx]={...c[idx],[f]:v};setLeads(c);};
+  const filtered=leads.filter(l=>{
+    if(filter==='phone'&&!l.phone)return false;
+    if(filter==='no-phone'&&l.phone)return false;
+    if(search&&!Object.values(l).join(' ').toLowerCase().includes(search.toLowerCase()))return false;
+    return true;
+  });
+  const sc=s=>{if(s==='Ready to Call')return{c:C.green,bg:C.greenBg};if(s==='Called')return{c:C.blue,bg:C.blueBg};if(s==='Follow Up')return{c:C.orange,bg:C.orangeBg};return{c:C.inkM,bg:C.card};};
+  return(<div style={{padding:16,paddingBottom:90}}>
+    <h1 style={{fontSize:20,fontWeight:800,color:C.gold,marginBottom:12}}>💰 Surplus Leads</h1>
+    <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search leads..." style={{width:'100%',padding:'10px 14px',borderRadius:10,border:`1px solid ${C.border}`,background:C.card,color:C.white,fontSize:14,marginBottom:10,outline:'none'}}/>
+    <div style={{display:'flex',gap:6,marginBottom:14}}>
+      {[['all','All ('+leads.length+')'],['phone','Has Phone'],['no-phone','Need Skip Trace']].map(([v,l])=>
+        <button key={v} onClick={()=>setFilter(v)} style={{padding:'6px 12px',borderRadius:20,border:'none',background:filter===v?C.gold:'#222',color:filter===v?'#000':C.inkM,fontSize:12,fontWeight:600,cursor:'pointer'}}>{l}</button>
+      )}
+    </div>
+    {filtered.map((l,i)=>{const s=sc(l.status);const isOpen=expanded===i;return(
+      <div key={l.id} onClick={()=>setExpanded(isOpen?null:i)} style={{background:C.card,borderRadius:10,padding:14,marginBottom:8,border:`1px solid ${l.phone?C.green+'33':C.border}`,cursor:'pointer'}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+          <div style={{flex:1}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4,flexWrap:'wrap'}}>
+              <span style={{fontSize:11,fontWeight:700,color:C.gold}}>{l.id}</span>
+              <Badge text={l.type} color={C.blue} bg={C.blueBg}/>
+              <Badge text={l.status} color={s.c} bg={s.bg}/>
+            </div>
+            <div style={{fontSize:13,fontWeight:600,color:C.white,lineHeight:1.3}}>{l.address}</div>
+            {l.phone&&<a href={`tel:${l.phone.replace(/\D/g,'')}`} style={{fontSize:12,color:C.green,marginTop:3,display:'block',textDecoration:'none'}}>📱 {l.phone}</a>}
+          </div>
+          <div style={{textAlign:'right',minWidth:75}}>
+            <div style={{fontSize:14,fontWeight:700,color:C.green}}>{l.profit}</div>
+            <div style={{fontSize:10,color:C.inkM}}>35% cut</div>
+          </div>
+        </div>
+        {isOpen&&<div style={{marginTop:12,paddingTop:12,borderTop:`1px solid ${C.border}`}} onClick={e=>e.stopPropagation()}>
+          <div style={{fontSize:12,color:C.inkM,marginBottom:4}}>Excess: <span style={{color:C.white}}>{l.excess}</span></div>
+          <div style={{fontSize:12,color:C.inkM,marginBottom:4}}>Owner: <span style={{color:C.white}}>{l.owner}</span></div>
+          <div style={{fontSize:12,color:C.inkM,marginBottom:8}}>Action: <span style={{color:C.orange}}>{l.action}</span></div>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            <select value={l.status} onChange={e=>upd(leads.indexOf(l),'status',e.target.value)} style={{padding:'6px 10px',borderRadius:8,border:`1px solid ${C.border}`,background:'#222',color:C.white,fontSize:12}}>
+              <option>Not Contacted</option><option>Ready to Call</option><option>Called</option><option>Follow Up</option><option>Under Contract</option><option>Dead</option>
+            </select>
+            {l.phone&&<a href={`tel:${l.phone.replace(/\D/g,'')}`} style={{padding:'6px 14px',borderRadius:8,background:C.green,color:'#000',fontSize:12,fontWeight:700,textDecoration:'none'}}>📞 Call</a>}
+          </div>
+          <input placeholder="Add notes..." value={l.notes||''} onChange={e=>upd(leads.indexOf(l),'notes',e.target.value)} style={{width:'100%',marginTop:8,padding:'8px 10px',borderRadius:8,border:`1px solid ${C.border}`,background:'#222',color:C.white,fontSize:12,outline:'none'}}/>
+        </div>}
+      </div>
+    );})}
+  </div>);
+};
+
+const DealAnalyzer=()=>{
+  const [d,setD]=useState(()=>{const s=localStorage.getItem('rf_deal');return s?JSON.parse(s):{address:'',price:'',sqft:'',beds:'',baths:'',units:'',comp1Price:'',comp1Sqft:'',comp2Price:'',comp2Sqft:'',comp3Price:'',comp3Sqft:'',repairSqft:'',repairRate:'350',mortgage:'',existingRate:'',monthlyPITI:'',entryDown:''};});
+  useEffect(()=>{localStorage.setItem('rf_deal',JSON.stringify(d));},[d]);
+  const set=(k,v)=>setD(p=>({...p,[k]:v}));
+  const n=v=>parseFloat(v)||0;
+  const comp1PSF=n(d.comp1Sqft)>0?n(d.comp1Price)/n(d.comp1Sqft):0;
+  const comp2PSF=n(d.comp2Sqft)>0?n(d.comp2Price)/n(d.comp2Sqft):0;
+  const comp3PSF=n(d.comp3Sqft)>0?n(d.comp3Price)/n(d.comp3Sqft):0;
+  const cc=[comp1PSF,comp2PSF,comp3PSF].filter(c=>c>0);
+  const avgPSF=cc.length>0?cc.reduce((a,b)=>a+b,0)/cc.length:0;
+  const arv=Math.round(avgPSF*n(d.sqft)/1000)*1000;
+  const baseRepair=n(d.repairSqft)*n(d.repairRate);
+  const totalRepairs=baseRepair+baseRepair*0.30+14500;
+  const loanAmt=n(d.price)*0.75;const origination=loanAmt*0.02;
+  const monthlyHold=loanAmt*(0.105/12)+(n(d.price)*0.011)/12+650;
+  const holdCost9=monthlyHold*9;const totalHolding=holdCost9+origination;
+  const mao70=arv*0.70-totalRepairs;const assignFee=mao70-n(d.price);const wholesaleGo=assignFee>15000;
+  const closingCosts=arv*0.055;const allInFlip=n(d.price)+totalRepairs+holdCost9+origination+closingCosts;
+  const flipProfit=arv-allInFlip;const flipROI=allInFlip>0?flipProfit/allInFlip:0;const flipGo=flipProfit>30000&&flipROI>0.20;
+  const fmt=v=>'$'+Math.round(v).toLocaleString();
+  const F=({label,k,ph,type})=><div style={{marginBottom:10}}><label style={{fontSize:11,fontWeight:600,color:C.inkM,display:'block',marginBottom:3}}>{label}</label><input value={d[k]} onChange={e=>set(k,e.target.value)} placeholder={ph||''} type={type||'text'} style={{width:'100%',padding:'10px 12px',borderRadius:8,border:`1px solid ${C.border}`,background:'#222',color:C.white,fontSize:14,outline:'none'}}/></div>;
+  const R=({label,value,color,bold})=><div style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:`1px solid ${C.border}`}}><span style={{fontSize:13,color:C.inkM}}>{label}</span><span style={{fontSize:13,fontWeight:bold?700:500,color:color||C.white}}>{value}</span></div>;
+  return(<div style={{padding:16,paddingBottom:90}}>
+    <h1 style={{fontSize:20,fontWeight:800,color:C.gold,marginBottom:12}}>🏠 Deal Analyzer</h1>
+    <div style={{background:C.card,borderRadius:12,padding:16,border:`1px solid ${C.border}`,marginBottom:14}}>
+      <h3 style={{fontSize:14,fontWeight:700,color:C.gold,marginBottom:10}}>Property Info</h3>
+      <F label="Address" k="address" ph="123 Main St"/>
+      <div style={{display:'flex',gap:8}}><div style={{flex:1}}><F label="Contract Price" k="price" ph="250000" type="number"/></div><div style={{flex:1}}><F label="Sq Ft" k="sqft" ph="1500" type="number"/></div></div>
+      <div style={{display:'flex',gap:8}}><div style={{flex:1}}><F label="Beds" k="beds" type="number"/></div><div style={{flex:1}}><F label="Baths" k="baths" type="number"/></div><div style={{flex:1}}><F label="Units" k="units" type="number"/></div></div>
+    </div>
+    <div style={{background:C.card,borderRadius:12,padding:16,border:`1px solid ${C.border}`,marginBottom:14}}>
+      <h3 style={{fontSize:14,fontWeight:700,color:C.gold,marginBottom:10}}>Comps</h3>
+      {[['comp1','Comp 1'],['comp2','Comp 2'],['comp3','Comp 3']].map(([k,l])=><div key={k} style={{display:'flex',gap:8,marginBottom:6}}><div style={{flex:1}}><F label={l+' Sold $'} k={k+'Price'} type="number"/></div><div style={{flex:1}}><F label={l+' SqFt'} k={k+'Sqft'} type="number"/></div></div>)}
+      {arv>0&&<div style={{background:'#1a2a1a',borderRadius:8,padding:12,marginTop:8}}><R label="Avg $/SqFt" value={fmt(avgPSF)}/><R label="ARV" value={fmt(arv)} color={C.green} bold/></div>}
+    </div>
+    <div style={{background:C.card,borderRadius:12,padding:16,border:`1px solid ${C.border}`,marginBottom:14}}>
+      <h3 style={{fontSize:14,fontWeight:700,color:C.gold,marginBottom:10}}>Repairs</h3>
+      <div style={{display:'flex',gap:8}}><div style={{flex:1}}><F label="SqFt to Repair" k="repairSqft" type="number"/></div><div style={{flex:1}}><F label="$/SqFt" k="repairRate" ph="350" type="number"/></div></div>
+      {n(d.repairSqft)>0&&<R label="Total Repairs + Buffer" value={fmt(totalRepairs)} color={C.orange} bold/>}
+    </div>
+    {arv>0&&n(d.price)>0&&<>
+      <div style={{background:wholesaleGo?'#0a2a15':'#2a0a0a',borderRadius:12,padding:16,border:`1px solid ${wholesaleGo?C.green:C.red}`,marginBottom:14}}>
+        <h3 style={{fontSize:14,fontWeight:700,color:wholesaleGo?C.green:C.red,marginBottom:8}}>{wholesaleGo?'✅':'❌'} WHOLESALE</h3>
+        <R label="MAO (70%)" value={fmt(mao70)}/><R label="Assignment Fee" value={fmt(assignFee)} color={assignFee>0?C.green:C.red} bold/>
+      </div>
+      <div style={{background:flipGo?'#0a2a15':'#2a0a0a',borderRadius:12,padding:16,border:`1px solid ${flipGo?C.green:C.red}`,marginBottom:14}}>
+        <h3 style={{fontSize:14,fontWeight:700,color:flipGo?C.green:C.red,marginBottom:8}}>{flipGo?'✅':'❌'} FIX & FLIP</h3>
+        <R label="All-In Cost" value={fmt(allInFlip)}/><R label="Net Profit" value={fmt(flipProfit)} color={flipProfit>0?C.green:C.red} bold/><R label="ROI" value={(flipROI*100).toFixed(1)+'%'} color={flipROI>0.2?C.green:C.red}/>
+      </div>
+    </>}
+    <div style={{background:C.card,borderRadius:12,padding:16,border:`1px solid ${C.border}`,marginBottom:14}}>
+      <h3 style={{fontSize:14,fontWeight:700,color:C.gold,marginBottom:10}}>Subject-To Hold</h3>
+      <F label="Existing Mortgage" k="mortgage" type="number"/><F label="Rate %" k="existingRate" type="number"/><F label="Monthly PITI" k="monthlyPITI" type="number"/><F label="Entry Cost" k="entryDown" type="number"/>
+      {n(d.monthlyPITI)>0&&arv>0&&<div style={{background:'#1a1a2a',borderRadius:8,padding:12,marginTop:8}}><R label="Equity Capture" value={fmt(arv-n(d.mortgage))} color={C.blue} bold/></div>}
+    </div>
+    <button onClick={()=>setD({address:'',price:'',sqft:'',beds:'',baths:'',units:'',comp1Price:'',comp1Sqft:'',comp2Price:'',comp2Sqft:'',comp3Price:'',comp3Sqft:'',repairSqft:'',repairRate:'350',mortgage:'',existingRate:'',monthlyPITI:'',entryDown:''})} style={{width:'100%',padding:12,borderRadius:10,border:`1px solid ${C.border}`,background:'#222',color:C.inkM,fontSize:13,fontWeight:600,cursor:'pointer'}}>Clear & New Deal</button>
+  </div>);
+};
+
+const RestaurantAgency=()=>{
+  const [clients,setClients]=useState(()=>{const s=localStorage.getItem('rf_rest');return s?JSON.parse(s):[{id:'R-001',name:'',contact:'',phone:'',email:'',service:'Website + SEO',retainer:'',status:'Prospect',notes:''}];});
+  useEffect(()=>{localStorage.setItem('rf_rest',JSON.stringify(clients));},[clients]);
+  const add=()=>{setClients([...clients,{id:'R-'+String(clients.length+1).padStart(3,'0'),name:'',contact:'',phone:'',email:'',service:'',retainer:'',status:'Prospect',notes:''}]);};
+  const upd=(i,f,v)=>{const c=[...clients];c[i]={...c[i],[f]:v};setClients(c);};
+  return(<div style={{padding:16,paddingBottom:90}}>
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+      <h1 style={{fontSize:20,fontWeight:800,color:C.gold}}>🍽️ Restaurant Agency</h1>
+      <button onClick={add} style={{padding:'8px 14px',borderRadius:8,border:'none',background:C.gold,color:'#000',fontSize:12,fontWeight:700,cursor:'pointer'}}>+ Add</button>
+    </div>
+    {clients.map((c,i)=><div key={c.id} style={{background:C.card,borderRadius:12,padding:16,border:`1px solid ${C.border}`,marginBottom:10}}>
+      <div style={{display:'flex',justifyContent:'space-between',marginBottom:8}}>
+        <span style={{fontSize:11,fontWeight:700,color:C.gold}}>{c.id}</span>
+        <select value={c.status} onChange={e=>upd(i,'status',e.target.value)} style={{padding:'4px 8px',borderRadius:6,border:`1px solid ${C.border}`,background:'#222',color:C.white,fontSize:11}}>
+          <option>Prospect</option><option>Pitched</option><option>Active Client</option><option>Paused</option><option>Churned</option>
+        </select>
+      </div>
+      {[['name','Business Name'],['contact','Contact Name'],['phone','Phone'],['email','Email'],['service','Service'],['retainer','Monthly Retainer $']].map(([k,l])=>
+        <input key={k} value={c[k]} onChange={e=>upd(i,k,e.target.value)} placeholder={l} style={{width:'100%',padding:'8px 10px',borderRadius:6,border:`1px solid ${C.border}`,background:'#222',color:C.white,fontSize:13,marginBottom:6,outline:'none'}}/>
+      )}
+      <textarea value={c.notes} onChange={e=>upd(i,'notes',e.target.value)} placeholder="Notes..." rows={2} style={{width:'100%',padding:'8px 10px',borderRadius:6,border:`1px solid ${C.border}`,background:'#222',color:C.white,fontSize:12,resize:'vertical',outline:'none'}}/>
+    </div>)}
+  </div>);
+};
+
+const BuyersReference=()=>(
+  <div style={{padding:16,paddingBottom:90}}>
+    <h1 style={{fontSize:20,fontWeight:800,color:C.gold,marginBottom:4}}>👥 Buyer Network</h1>
+    <p style={{fontSize:13,color:C.inkM,marginBottom:14}}>68 buyers · 76+ buy boxes</p>
+    <div style={{background:'linear-gradient(135deg,#2a0a0a,#1a0000)',border:`1px solid ${C.red}`,borderRadius:12,padding:14,marginBottom:16}}>
+      <h3 style={{fontSize:13,fontWeight:700,color:C.red,marginBottom:8}}>🔥 URGENT BUYER NEEDS</h3>
+      {URGENT_BUYERS.map((b,i)=><div key={i} style={{marginBottom:i<URGENT_BUYERS.length-1?10:0}}>
+        <div style={{display:'flex',justifyContent:'space-between',flexWrap:'wrap'}}><span style={{fontSize:13,fontWeight:700,color:C.white}}>{b.name}</span><span style={{fontSize:11,color:C.goldL}}>{b.contact}</span></div>
+        <div style={{fontSize:12,color:C.orange,marginTop:2}}>{b.need}</div>
+      </div>)}
+    </div>
+    {BUYERS.map((b,i)=><div key={i} style={{background:C.card,borderRadius:10,padding:14,marginBottom:8,border:`1px solid ${b.urgent?C.orange+'44':C.border}`}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+        <span style={{fontSize:14,fontWeight:700,color:C.white}}>{b.type}</span>
+        <Badge text={b.count+' buyers'} color={C.gold} bg={C.goldD+'44'}/>
+      </div>
+      <div style={{fontSize:12,color:C.inkM,lineHeight:1.4}}>{b.names}</div>
+      {b.urgent&&<div style={{fontSize:11,color:C.orange,marginTop:4}}>⚡ {b.urgent}</div>}
+    </div>)}
+  </div>
+);
+
+const TABS=[{id:'dashboard',label:'Dashboard',icon:'📊'},{id:'surplus',label:'Leads',icon:'💰'},{id:'analyzer',label:'Analyze',icon:'🏠'},{id:'restaurant',label:'Agency',icon:'🍽️'},{id:'buyers',label:'Buyers',icon:'👥'}];
+
+const App=()=>{
+  const [tab,setTab]=useState('dashboard');
+  return(<div style={{maxWidth:480,margin:'0 auto',minHeight:'100vh',position:'relative'}}>
+    <div style={{height:44,background:C.bg}}/>
+    {tab==='dashboard'&&<Dashboard/>}
+    {tab==='surplus'&&<SurplusLeads/>}
+    {tab==='analyzer'&&<DealAnalyzer/>}
+    {tab==='restaurant'&&<RestaurantAgency/>}
+    {tab==='buyers'&&<BuyersReference/>}
+    <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:480,background:'rgba(10,10,10,0.95)',backdropFilter:'blur(20px)',borderTop:`1px solid ${C.border}`,display:'flex',padding:'8px 0 28px',zIndex:100}}>
+      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:2,padding:'4px 0'}}>
+        <span style={{fontSize:20}}>{t.icon}</span>
+        <span style={{fontSize:10,fontWeight:tab===t.id?700:500,color:tab===t.id?C.gold:C.inkL}}>{t.label}</span>
+      </button>)}
+    </div>
+  </div>);
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
