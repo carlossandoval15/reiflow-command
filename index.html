@@ -457,6 +457,8 @@ const SourceBadge=({source})=>{
 const CallMode=({lead,allCallable,leadIndex,onClose,onUpdate,onNext,onPrev})=>{
   const [showScript,setShowScript]=useState(false);
   const [note,setNote]=useState(lead.notes||'');
+  const [picked,setPicked]=useState(null);
+  useEffect(()=>{setNote(lead.notes||'');setPicked(null);},[lead.id]);
 
   const scriptKey = lead.type==='agency'?'agency':lead.type==='foreclosure'?'foreclosure':lead.type==='surplus'?'surplus':
     (lead.source||'').toLowerCase().includes('expired')?'expired':'seller';
@@ -472,21 +474,23 @@ const CallMode=({lead,allCallable,leadIndex,onClose,onUpdate,onNext,onPrev})=>{
     ?['No Answer','Left VM','Callback','Pitched','Signed!','Not Interested']
     :['No Answer','Left VM','Callback','Follow Up','🎉 Signed Up!','Not Interested'];
 
-  const pick=o=>{
-    const mapped={'Signed!':'Active Client','🎉 Signed Up!':'Signed Up'}[o]||o;
+  const confirmPick=()=>{
+    if(!picked)return;
+    const mapped={'Signed!':'Active Client','🎉 Signed Up!':'Signed Up'}[picked]||picked;
     const updated={...lead,status:mapped,notes:note};
     onUpdate(updated);
-    if(['No Answer','Left VM'].includes(o))onNext();
+    if(['No Answer','Left VM'].includes(picked))onNext();
   };
 
   const outcomeStyle=o=>{
-    if(o.includes('Signed'))return{bg:C.gold,color:'#000',fw:800};
-    if(o==='No Answer')return{bg:'#1a1a1a',color:C.inkM,fw:600};
-    if(o==='Left VM')return{bg:C.blueBg,color:C.blue,fw:600};
-    if(o==='Callback'||o==='Follow Up')return{bg:C.orangeBg,color:C.orange,fw:600};
-    if(o==='Pitched')return{bg:C.purpleBg,color:C.purple,fw:600};
-    if(o==='Not Interested')return{bg:'#1a1a1a',color:C.red,fw:500};
-    return{bg:'#1a1a1a',color:C.inkM,fw:500};
+    const isSelected=picked===o;
+    if(o.includes('Signed'))return{bg:isSelected?C.gold:'#2a1f00',color:isSelected?'#000':C.gold,fw:800,ring:isSelected?`0 0 0 2px ${C.gold}`:'none'};
+    if(o==='No Answer')return{bg:isSelected?'#333':'#1a1a1a',color:isSelected?C.white:C.inkM,fw:600,ring:isSelected?`0 0 0 2px ${C.inkM}`:'none'};
+    if(o==='Left VM')return{bg:isSelected?C.blue:C.blueBg,color:isSelected?'#000':C.blue,fw:600,ring:isSelected?`0 0 0 2px ${C.blue}`:'none'};
+    if(o==='Callback'||o==='Follow Up')return{bg:isSelected?C.orange:C.orangeBg,color:isSelected?'#000':C.orange,fw:600,ring:isSelected?`0 0 0 2px ${C.orange}`:'none'};
+    if(o==='Pitched')return{bg:isSelected?C.purple:C.purpleBg,color:isSelected?'#fff':C.purple,fw:600,ring:isSelected?`0 0 0 2px ${C.purple}`:'none'};
+    if(o==='Not Interested')return{bg:isSelected?C.red:'#1a1a1a',color:isSelected?'#fff':C.red,fw:500,ring:isSelected?`0 0 0 2px ${C.red}`:'none'};
+    return{bg:'#1a1a1a',color:C.inkM,fw:500,ring:'none'};
   };
 
   const hasPhone2=lead.phone2&&lead.phone2!==lead.phone;
@@ -589,14 +593,17 @@ const CallMode=({lead,allCallable,leadIndex,onClose,onUpdate,onNext,onPrev})=>{
 
       {/* Outcome buttons */}
       <div style={{padding:'12px 20px 34px',borderTop:`1px solid ${C.border}`,background:C.bg,flexShrink:0}}>
-        <div style={{fontSize:10,fontWeight:700,color:C.inkM,marginBottom:10,textTransform:'uppercase',letterSpacing:1,textAlign:'center'}}>Log Outcome</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
+        <div style={{fontSize:10,fontWeight:700,color:C.inkM,marginBottom:10,textTransform:'uppercase',letterSpacing:1,textAlign:'center'}}>Tag Outcome</div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:10}}>
           {outcomes.map(o=>{const st=outcomeStyle(o);return(
-            <button key={o} onClick={()=>pick(o)} style={{padding:'10px 4px',borderRadius:12,background:st.bg,color:st.color,fontSize:11,fontWeight:st.fw,border:'none',cursor:'pointer',lineHeight:1.3}}>
+            <button key={o} onClick={()=>setPicked(o)} style={{padding:'10px 4px',borderRadius:12,background:st.bg,color:st.color,fontSize:11,fontWeight:st.fw,border:'none',cursor:'pointer',lineHeight:1.3,boxShadow:st.ring,transition:'all 0.15s'}}>
               {o}
             </button>
           );})}
         </div>
+        <button onClick={confirmPick} disabled={!picked} style={{width:'100%',padding:'14px',borderRadius:14,background:picked?C.gold:'#1a1a1a',color:picked?'#000':C.border,fontSize:14,fontWeight:900,border:'none',cursor:picked?'pointer':'default',transition:'all 0.2s',letterSpacing:0.5}}>
+          {picked?`✓ Log "${picked}"`:'Select an outcome above'}
+        </button>
       </div>
     </div>
   );
@@ -1281,7 +1288,7 @@ const App=()=>{
   return(
     <div style={{maxWidth:480,margin:'0 auto',minHeight:'100vh',background:C.bg,position:'relative'}}>
       <div style={{height:48}}/>
-      {callState&&<CallMode lead={callState.lead} allCallable={callState.callable} leadIndex={callIdx} onClose={()=>setCallState(null)} onUpdate={updateLead} onNext={goNext} onPrev={goPrev}/>}
+      {callState&&<CallMode key={callState.lead.id} lead={callState.lead} allCallable={callState.callable} leadIndex={callIdx} onClose={()=>setCallState(null)} onUpdate={updateLead} onNext={goNext} onPrev={goPrev}/>}
       {!callState&&<>
         {tab==='dashboard'&&<Dashboard surplus={surplus} foreclosure={foreclosure} seller={seller} agency={agency} onCallMode={openCallMode}/>}
         {tab==='leads'&&<LeadsTab surplus={surplus} setSurplus={setSurplus} foreclosure={foreclosure} setForeclosure={setForeclosure} seller={seller} setSeller={setSeller} onCallMode={openCallMode}/>}
