@@ -474,12 +474,15 @@ const CallMode=({lead,allCallable,leadIndex,onClose,onUpdate,onNext,onPrev})=>{
     ?['No Answer','Left VM','Callback','Pitched','Signed!','Not Interested']
     :['No Answer','Left VM','Callback','Follow Up','🎉 Signed Up!','Not Interested'];
 
+  const [saved,setSaved]=useState(false);
   const confirmPick=()=>{
     if(!picked)return;
     const mapped={'Signed!':'Active Client','🎉 Signed Up!':'Signed Up'}[picked]||picked;
     const updated={...lead,status:mapped,notes:note};
     onUpdate(updated);
-    if(['No Answer','Left VM'].includes(picked))onNext();
+    const autoAdv=['No Answer','Left VM'].includes(picked);
+    if(autoAdv){onNext();}
+    else{setSaved(true);setPicked(null);setTimeout(()=>setSaved(false),1800);}
   };
 
   const outcomeStyle=o=>{
@@ -601,8 +604,8 @@ const CallMode=({lead,allCallable,leadIndex,onClose,onUpdate,onNext,onPrev})=>{
             </button>
           );})}
         </div>
-        <button onClick={confirmPick} disabled={!picked} style={{width:'100%',padding:'14px',borderRadius:14,background:picked?C.gold:'#1a1a1a',color:picked?'#000':C.border,fontSize:14,fontWeight:900,border:'none',cursor:picked?'pointer':'default',transition:'all 0.2s',letterSpacing:0.5}}>
-          {picked?`✓ Log "${picked}"`:'Select an outcome above'}
+        <button onClick={confirmPick} disabled={!picked&&!saved} style={{width:'100%',padding:'14px',borderRadius:14,background:saved?C.green:picked?C.gold:'#1a1a1a',color:saved?'#000':picked?'#000':C.border,fontSize:14,fontWeight:900,border:'none',cursor:picked?'pointer':'default',transition:'all 0.2s',letterSpacing:0.5}}>
+          {saved?'✅ Logged!':picked?`✓ Log "${picked}"`:'Select an outcome above'}
         </button>
       </div>
     </div>
@@ -1274,10 +1277,11 @@ const App=()=>{
 
   const updateLead=(updated)=>{
     const update=(prev)=>prev.map(l=>l.id===updated.id?updated:l);
-    if(callState.type==='surplus')setSurplus(update);
-    else if(callState.type==='foreclosure')setForeclosure(update);
-    else if(callState.type==='seller')setSeller(update);
-    else if(callState.type==='agency')setAgency(update);
+    const t=callState.type||updated.type;
+    if(t==='surplus')setSurplus(update);
+    else if(t==='foreclosure')setForeclosure(update);
+    else if(t==='seller')setSeller(update);
+    else if(t==='agency')setAgency(update);
     setCallState(p=>({...p,lead:updated}));
   };
 
