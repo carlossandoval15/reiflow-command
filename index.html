@@ -1033,9 +1033,220 @@ const BuyersTab=()=>(
   </div>
 );
 
+// ─── DEAL CALCULATOR TAB ─────────────────────────────────────────────────────
+
+const DealCalcTab=()=>{
+  const CALC_TABS=[
+    {id:'subto',label:'🔑 Sub-To',color:C.teal},
+    {id:'sf',label:'📝 Seller Fin',color:C.purple},
+    {id:'wholesale',label:'🔄 Wholesale',color:C.orange},
+    {id:'brrrr',label:'🏗️ BRRRR',color:C.blue},
+    {id:'rental',label:'📈 Rental',color:C.green},
+  ];
+  const [mode,setMode]=useState('subto');
+  const [sto,setSto]=useState({listPrice:589000,loanBal:380000,loanRate:3.5,existingPayment:1900,rent:3000,taxes:540,insurance:150,maintenance:150,pm:10,equityPayment:30000});
+  const [sf,setSf]=useState({price:589000,down:50000,rate:5.0,term:30,amortType:'amort',rent:3000,taxes:540,insurance:150,maintenance:150,pm:10});
+  const [ws,setWs]=useState({arv:589000,repairs:0,assignFee:20000});
+  const [br,setBr]=useState({purchase:400000,rehab:30000,arv:500000,refiLtv:75,refiRate:7.0,refiTerm:30,rent:3000,taxes:500,insurance:150,maintenance:150,pm:10});
+  const [rl,setRl]=useState({price:589000,down:20,rate:7.0,term:30,rent:3000,vacancy:5,taxes:540,insurance:150,maintenance:150,pm:10});
+  const fmt=(n)=>`$${Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:0})}`;
+  const pmt=(pv,r,n)=>r===0?pv/n:pv*(r*Math.pow(1+r,n))/(Math.pow(1+r,n)-1);
+  const cfColor=(cf)=>cf>0?C.green:cf>-200?C.orange:C.red;
+  const Inp=({val,set,label,pre='$'})=>(
+    <div style={{marginBottom:10}}>
+      <div style={{fontSize:10,color:C.inkM,marginBottom:3}}>{label}</div>
+      <div style={{display:'flex',alignItems:'center',background:C.card2,borderRadius:8,border:`1px solid ${C.border}`}}>
+        <span style={{padding:'0 8px',color:C.inkM,fontSize:12}}>{pre}</span>
+        <input type="number" value={val} onChange={e=>set(+e.target.value)} style={{flex:1,background:'none',border:'none',color:C.ink,fontSize:14,fontWeight:600,padding:'10px 8px 10px 0',outline:'none',minWidth:0}}/>
+      </div>
+    </div>
+  );
+  const Row=({label,val,color=C.ink,sub=''})=>(
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',padding:'8px 0',borderBottom:`1px solid ${C.border}`}}>
+      <div><div style={{fontSize:12,color:C.inkM}}>{label}</div>{sub&&<div style={{fontSize:10,color:C.inkL}}>{sub}</div>}</div>
+      <div style={{fontSize:15,fontWeight:800,color}}>{val}</div>
+    </div>
+  );
+  const Card=({children,color=C.gold,title})=>(
+    <div style={{background:C.card,borderRadius:14,padding:16,marginBottom:14}}>
+      {title&&<div style={{fontSize:13,fontWeight:700,color,marginBottom:12}}>{title}</div>}
+      {children}
+    </div>
+  );
+  const CFBlock=({cf,extra=[]})=>(
+    <>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',padding:'12px 0 8px'}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.inkM}}>Monthly Cash Flow</div>
+        <div style={{fontSize:28,fontWeight:900,color:cfColor(cf)}}>{cf>=0?'+':''}{fmt(cf)}</div>
+      </div>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+        {[{label:'Annual CF',val:(cf>=0?'+':'-')+fmt(cf*12),color:cfColor(cf)},...extra].map(({label,val,color})=>(
+          <div key={label} style={{flex:'1 0 45%',background:C.card2,borderRadius:10,padding:10,textAlign:'center'}}>
+            <div style={{fontSize:10,color:C.inkM,marginBottom:2}}>{label}</div>
+            <div style={{fontSize:15,fontWeight:800,color}}>{val}</div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+  const stoR=()=>{const pm=sto.rent*(sto.pm/100);const out=sto.existingPayment+sto.taxes+sto.insurance+sto.maintenance+pm;const cf=sto.rent-out;const equity=sto.listPrice-sto.loanBal;const coc=sto.equityPayment>0?(cf*12/sto.equityPayment*100):0;return{cf,equity,out,coc};};
+  const sfR=()=>{const loan=sf.price-sf.down;const mr=sf.rate/100/12;const n=sf.term*12;const pymt=sf.amortType==='io'?loan*mr:pmt(loan,mr,n);const pm=sf.rent*(sf.pm/100);const out=pymt+sf.taxes+sf.insurance+sf.maintenance+pm;const cf=sf.rent-out;const coc=sf.down>0?(cf*12/sf.down*100):0;return{loan,pymt,out,cf,coc};};
+  const wsR=()=>({mao65:ws.arv*0.65-ws.repairs,mao70:ws.arv*0.70-ws.repairs,mao75:ws.arv*0.75-ws.repairs,offer:ws.arv*0.70-ws.repairs-ws.assignFee});
+  const brR=()=>{const allIn=br.purchase+br.rehab;const refiAmt=br.arv*(br.refiLtv/100);const cashOut=refiAmt-allIn;const cashLeft=Math.max(0,allIn-refiAmt);const mr=br.refiRate/100/12;const n=br.refiTerm*12;const mortPmt=pmt(refiAmt,mr,n);const pm=br.rent*(br.pm/100);const out=mortPmt+br.taxes+br.insurance+br.maintenance+pm;const cf=br.rent-out;const coc=cashLeft>0?(cf*12/cashLeft*100):Infinity;const equity=br.arv-refiAmt;return{allIn,refiAmt,cashOut,cashLeft,mortPmt,cf,coc,equity};};
+  const rlR=()=>{const dn=rl.price*(rl.down/100);const loan=rl.price-dn;const mr=rl.rate/100/12;const n=rl.term*12;const mortPmt=pmt(loan,mr,n);const effRent=rl.rent*(1-rl.vacancy/100);const pm=effRent*(rl.pm/100);const out=mortPmt+rl.taxes+rl.insurance+rl.maintenance+pm;const cf=effRent-out;const noi=effRent-rl.taxes-rl.insurance-rl.maintenance-pm;const capRate=(noi*12)/rl.price*100;const grm=rl.price/(rl.rent*12);const coc=dn>0?(cf*12/dn*100):0;return{dn,loan,mortPmt,effRent,cf,noi,capRate,grm,coc,out};};
+  const s=stoR(),f=sfR(),w=wsR(),b=brR(),r=rlR();
+  return(
+    <div style={{padding:'16px',paddingBottom:90}}>
+      <div style={{fontSize:22,fontWeight:900,color:C.gold,marginBottom:2}}>Deal Calculator</div>
+      <div style={{fontSize:12,color:C.inkM,marginBottom:14}}>Run any structure in seconds</div>
+      <div style={{display:'flex',gap:4,marginBottom:18,overflowX:'auto',paddingBottom:4}}>
+        {CALC_TABS.map(t=>(
+          <button key={t.id} onClick={()=>setMode(t.id)} style={{flexShrink:0,padding:'7px 10px',borderRadius:10,border:`2px solid ${mode===t.id?t.color:C.border}`,background:mode===t.id?t.color+'22':'#111',color:mode===t.id?t.color:C.inkM,fontSize:10,fontWeight:700,cursor:'pointer',whiteSpace:'nowrap'}}>{t.label}</button>
+        ))}
+      </div>
+      {mode==='subto'&&<div>
+        <Card color={C.teal} title="Property & Mortgage">
+          <Inp val={sto.listPrice} set={v=>setSto(p=>({...p,listPrice:v}))} label="List / ARV"/>
+          <Inp val={sto.loanBal} set={v=>setSto(p=>({...p,loanBal:v}))} label="Existing Loan Balance"/>
+          <Inp val={sto.loanRate} set={v=>setSto(p=>({...p,loanRate:v}))} label="Existing Interest Rate" pre="%"/>
+          <Inp val={sto.existingPayment} set={v=>setSto(p=>({...p,existingPayment:v}))} label="Existing PITI Payment"/>
+          <Inp val={sto.equityPayment} set={v=>setSto(p=>({...p,equityPayment:v}))} label="Cash to Seller (Equity)"/>
+        </Card>
+        <Card color={C.teal} title="Income & Expenses">
+          <Inp val={sto.rent} set={v=>setSto(p=>({...p,rent:v}))} label="Monthly Rent"/>
+          <Inp val={sto.taxes} set={v=>setSto(p=>({...p,taxes:v}))} label="Property Tax /mo"/>
+          <Inp val={sto.insurance} set={v=>setSto(p=>({...p,insurance:v}))} label="Insurance /mo"/>
+          <Inp val={sto.maintenance} set={v=>setSto(p=>({...p,maintenance:v}))} label="Maintenance /mo"/>
+          <Inp val={sto.pm} set={v=>setSto(p=>({...p,pm:v}))} label="Property Mgmt %" pre="%"/>
+        </Card>
+        <Card color={C.gold} title="📊 Results">
+          <Row label="Seller Equity" val={fmt(s.equity)}/>
+          <Row label="Cash to Seller" val={fmt(sto.equityPayment)}/>
+          <Row label="Existing PITI" val={fmt(sto.existingPayment)}/>
+          <Row label="Total Monthly Out" val={fmt(s.out)}/>
+          <Row label="Rent In" val={fmt(sto.rent)} color={C.green}/>
+          <CFBlock cf={s.cf} extra={[{label:'CoC Return',val:`${s.coc.toFixed(1)}%`,color:s.coc>10?C.green:s.coc>0?C.orange:C.red}]}/>
+          <div style={{marginTop:12,padding:10,background:s.cf>0?C.greenBg:C.redBg,borderRadius:10,borderLeft:`3px solid ${s.cf>0?C.green:C.red}`}}>
+            <div style={{fontSize:11,fontWeight:700,color:s.cf>0?C.green:C.red}}>{s.cf>500?'✅ Strong — lock it up':s.cf>0?'⚡ Tight but works — negotiate equity down':s.cf>-300?'⚠️ Slightly negative — push rent or cut equity':'❌ Doesn\'t pencil — renegotiate or walk'}</div>
+          </div>
+        </Card>
+      </div>}
+      {mode==='sf'&&<div>
+        <Card color={C.purple} title="Deal Terms">
+          <Inp val={sf.price} set={v=>setSf(p=>({...p,price:v}))} label="Purchase Price"/>
+          <Inp val={sf.down} set={v=>setSf(p=>({...p,down:v}))} label="Down Payment"/>
+          <Inp val={sf.rate} set={v=>setSf(p=>({...p,rate:v}))} label="Interest Rate" pre="%"/>
+          <Inp val={sf.term} set={v=>setSf(p=>({...p,term:v}))} label="Term (years)" pre="yr"/>
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:10,color:C.inkM,marginBottom:3}}>Amortization Type</div>
+            <div style={{display:'flex',gap:6}}>
+              {['amort','io'].map(t=>(
+                <button key={t} onClick={()=>setSf(p=>({...p,amortType:t}))} style={{flex:1,padding:'9px',borderRadius:8,border:`2px solid ${sf.amortType===t?C.purple:C.border}`,background:sf.amortType===t?C.purple+'22':'#111',color:sf.amortType===t?C.purple:C.inkM,fontSize:11,fontWeight:700,cursor:'pointer'}}>{t==='amort'?'Amortized':'Interest Only'}</button>
+              ))}
+            </div>
+          </div>
+        </Card>
+        <Card color={C.purple} title="Income & Expenses">
+          <Inp val={sf.rent} set={v=>setSf(p=>({...p,rent:v}))} label="Monthly Rent"/>
+          <Inp val={sf.taxes} set={v=>setSf(p=>({...p,taxes:v}))} label="Property Tax /mo"/>
+          <Inp val={sf.insurance} set={v=>setSf(p=>({...p,insurance:v}))} label="Insurance /mo"/>
+          <Inp val={sf.maintenance} set={v=>setSf(p=>({...p,maintenance:v}))} label="Maintenance /mo"/>
+          <Inp val={sf.pm} set={v=>setSf(p=>({...p,pm:v}))} label="Property Mgmt %" pre="%"/>
+        </Card>
+        <Card color={C.gold} title="📊 Results">
+          <Row label="Loan Amount" val={fmt(f.loan)}/>
+          <Row label={`Monthly Payment (${sf.amortType==='io'?'IO':'P&I'})`} val={fmt(f.pymt)}/>
+          <Row label="Total Monthly Out" val={fmt(f.out)}/>
+          <Row label="Rent In" val={fmt(sf.rent)} color={C.green}/>
+          <CFBlock cf={f.cf} extra={[{label:'CoC Return',val:`${f.coc.toFixed(1)}%`,color:f.coc>8?C.green:f.coc>0?C.orange:C.red}]}/>
+        </Card>
+      </div>}
+      {mode==='wholesale'&&<div>
+        <Card color={C.orange} title="Deal Numbers">
+          <Inp val={ws.arv} set={v=>setWs(p=>({...p,arv:v}))} label="After Repair Value (ARV)"/>
+          <Inp val={ws.repairs} set={v=>setWs(p=>({...p,repairs:v}))} label="Estimated Repairs"/>
+          <Inp val={ws.assignFee} set={v=>setWs(p=>({...p,assignFee:v}))} label="Your Assignment Fee"/>
+        </Card>
+        <Card color={C.gold} title="📊 MAO Breakdown">
+          <div style={{display:'flex',gap:8,marginBottom:14}}>
+            {[{pct:65,v:w.mao65,lbl:'Conservative'},{pct:70,v:w.mao70,lbl:'⭐ Standard'},{pct:75,v:w.mao75,lbl:'Aggressive'}].map(({pct,v,lbl})=>(
+              <div key={pct} style={{flex:1,background:C.card2,borderRadius:10,padding:10,textAlign:'center',border:`1px solid ${pct===70?C.orange:C.border}`}}>
+                <div style={{fontSize:9,color:pct===70?C.orange:C.inkM,marginBottom:2}}>{lbl}</div>
+                <div style={{fontSize:10,color:C.inkL,marginBottom:3}}>{pct}% ARV</div>
+                <div style={{fontSize:14,fontWeight:800,color:pct===70?C.orange:C.ink}}>{fmt(v)}</div>
+              </div>
+            ))}
+          </div>
+          <Row label="ARV" val={fmt(ws.arv)}/>
+          <Row label="Repairs" val={fmt(ws.repairs)}/>
+          <Row label="Assignment Fee" val={fmt(ws.assignFee)} color={C.green}/>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',padding:'12px 0 4px'}}>
+            <div style={{fontSize:13,fontWeight:700,color:C.inkM}}>Your Max Offer (70%)</div>
+            <div style={{fontSize:26,fontWeight:900,color:C.orange}}>{fmt(w.offer)}</div>
+          </div>
+          <div style={{marginTop:10,padding:10,background:C.orangeBg,borderRadius:10,borderLeft:`3px solid ${C.orange}`}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.orange}}>Buy at {fmt(w.offer)} → assign at {fmt(w.mao70)} → pocket {fmt(ws.assignFee)}</div>
+          </div>
+        </Card>
+      </div>}
+      {mode==='brrrr'&&<div>
+        <Card color={C.blue} title="Acquisition">
+          <Inp val={br.purchase} set={v=>setBr(p=>({...p,purchase:v}))} label="Purchase Price"/>
+          <Inp val={br.rehab} set={v=>setBr(p=>({...p,rehab:v}))} label="Rehab Budget"/>
+          <Inp val={br.arv} set={v=>setBr(p=>({...p,arv:v}))} label="After Repair Value (ARV)"/>
+        </Card>
+        <Card color={C.blue} title="Refinance Terms">
+          <Inp val={br.refiLtv} set={v=>setBr(p=>({...p,refiLtv:v}))} label="Refi LTV %" pre="%"/>
+          <Inp val={br.refiRate} set={v=>setBr(p=>({...p,refiRate:v}))} label="Refi Rate %" pre="%"/>
+          <Inp val={br.refiTerm} set={v=>setBr(p=>({...p,refiTerm:v}))} label="Refi Term (years)" pre="yr"/>
+        </Card>
+        <Card color={C.blue} title="Rental Income & Expenses">
+          <Inp val={br.rent} set={v=>setBr(p=>({...p,rent:v}))} label="Monthly Rent"/>
+          <Inp val={br.taxes} set={v=>setBr(p=>({...p,taxes:v}))} label="Property Tax /mo"/>
+          <Inp val={br.insurance} set={v=>setBr(p=>({...p,insurance:v}))} label="Insurance /mo"/>
+          <Inp val={br.maintenance} set={v=>setBr(p=>({...p,maintenance:v}))} label="Maintenance /mo"/>
+          <Inp val={br.pm} set={v=>setBr(p=>({...p,pm:v}))} label="Property Mgmt %" pre="%"/>
+        </Card>
+        <Card color={C.gold} title="📊 Results">
+          <Row label="All-In Cost" val={fmt(b.allIn)}/>
+          <Row label={`Refi Loan (${br.refiLtv}% LTV)`} val={fmt(b.refiAmt)}/>
+          <Row label="Cash Pulled Out" val={(b.cashOut>=0?'+':'-')+fmt(b.cashOut)} color={b.cashOut>=0?C.green:C.red}/>
+          <Row label="Cash Left in Deal" val={fmt(b.cashLeft)} color={b.cashLeft<5000?C.green:b.cashLeft<30000?C.orange:C.red} sub="Lower = better BRRRR"/>
+          <Row label="New Mortgage (P&I)" val={fmt(b.mortPmt)}/>
+          <CFBlock cf={b.cf} extra={[{label:'CoC (on cash left)',val:b.coc===Infinity?'∞%':`${b.coc.toFixed(1)}%`,color:b.coc===Infinity||b.coc>10?C.green:b.coc>0?C.orange:C.red},{label:'Post-Refi Equity',val:fmt(b.equity),color:C.blue}]}/>
+        </Card>
+      </div>}
+      {mode==='rental'&&<div>
+        <Card color={C.green} title="Purchase & Financing">
+          <Inp val={rl.price} set={v=>setRl(p=>({...p,price:v}))} label="Purchase Price"/>
+          <Inp val={rl.down} set={v=>setRl(p=>({...p,down:v}))} label="Down Payment %" pre="%"/>
+          <Inp val={rl.rate} set={v=>setRl(p=>({...p,rate:v}))} label="Interest Rate %" pre="%"/>
+          <Inp val={rl.term} set={v=>setRl(p=>({...p,term:v}))} label="Loan Term (years)" pre="yr"/>
+        </Card>
+        <Card color={C.green} title="Income & Expenses">
+          <Inp val={rl.rent} set={v=>setRl(p=>({...p,rent:v}))} label="Gross Monthly Rent"/>
+          <Inp val={rl.vacancy} set={v=>setRl(p=>({...p,vacancy:v}))} label="Vacancy Rate %" pre="%"/>
+          <Inp val={rl.taxes} set={v=>setRl(p=>({...p,taxes:v}))} label="Property Tax /mo"/>
+          <Inp val={rl.insurance} set={v=>setRl(p=>({...p,insurance:v}))} label="Insurance /mo"/>
+          <Inp val={rl.maintenance} set={v=>setRl(p=>({...p,maintenance:v}))} label="Maintenance /mo"/>
+          <Inp val={rl.pm} set={v=>setRl(p=>({...p,pm:v}))} label="Property Mgmt %" pre="%"/>
+        </Card>
+        <Card color={C.gold} title="📊 Results">
+          <Row label="Down Payment" val={fmt(r.dn)}/>
+          <Row label="Loan Amount" val={fmt(r.loan)}/>
+          <Row label="Mortgage (P&I)" val={fmt(r.mortPmt)}/>
+          <Row label="Effective Rent" val={fmt(r.effRent)} sub="after vacancy"/>
+          <Row label="Total Monthly Out" val={fmt(r.out)}/>
+          <CFBlock cf={r.cf} extra={[{label:'CoC Return',val:`${r.coc.toFixed(1)}%`,color:r.coc>8?C.green:r.coc>0?C.orange:C.red},{label:'Cap Rate',val:`${r.capRate.toFixed(1)}%`,color:r.capRate>7?C.green:r.capRate>5?C.orange:C.red},{label:'GRM',val:r.grm.toFixed(1),color:r.grm<10?C.green:r.grm<14?C.orange:C.red}]}/>
+        </Card>
+      </div>}
+    </div>
+  );
+};
+
 // ─── APP ─────────────────────────────────────────────────────────────────────
 
-const TABS=[{id:'dashboard',label:'Home',icon:'📊'},{id:'leads',label:'Leads',icon:'📋'},{id:'agency',label:'Agency',icon:'🍽️'},{id:'buyers',label:'Buyers',icon:'👥'}];
+const TABS=[{id:'dashboard',label:'Home',icon:'📊'},{id:'leads',label:'Leads',icon:'📋'},{id:'agency',label:'Agency',icon:'🍽️'},{id:'buyers',label:'Buyers',icon:'👥'},{id:'deals',label:'Deals',icon:'🧮'}];
 
 const load=(key,fallback)=>{try{const s=localStorage.getItem(key);return s?JSON.parse(s):fallback;}catch{return fallback;}};
 
@@ -1076,6 +1287,7 @@ const App=()=>{
         {tab==='leads'&&<LeadsTab surplus={surplus} setSurplus={setSurplus} foreclosure={foreclosure} setForeclosure={setForeclosure} seller={seller} setSeller={setSeller} onCallMode={openCallMode}/>}
         {tab==='agency'&&<AgencyTab clients={agency} setClients={setAgency} onCallMode={openCallMode}/>}
         {tab==='buyers'&&<BuyersTab/>}
+        {tab==='deals'&&<DealCalcTab/>}
       </>}
       {!callState&&(
         <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:480,background:'rgba(10,10,10,0.97)',backdropFilter:'blur(20px)',borderTop:`1px solid ${C.border}`,display:'flex',padding:'10px 0 30px',zIndex:100}}>
