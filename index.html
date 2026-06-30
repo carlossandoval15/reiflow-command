@@ -426,6 +426,8 @@ const ImportModal = ({ onClose, onImport, targetType, setTargetType }) => {
 const fmt$=v=>!v||isNaN(v)?'$0':v>=1000000?'$'+(v/1000000).toFixed(2)+'M':v>=1000?'$'+(v/1000).toFixed(0)+'K':'$'+Math.round(v).toLocaleString();
 const fmtFull$=v=>'$'+Math.round(v||0).toLocaleString();
 const dialNum=p=>(p||'').replace(/\D/g,'');
+let _useGV=localStorage.getItem('rf_use_gv')==='true';
+const callHref=(p)=>{const num=dialNum(p);if(!num)return'#';if(_useGV){const e=num.length===10?`+1${num}`:num.length===11&&num[0]==='1'?`+${num}`:`+${num}`;return`https://voice.google.com/calls?a=nc&b=${encodeURIComponent(e)}`;}return`tel:${num}`;};
 
 const statusColor=s=>{
   if(['Ready to Call','Not Contacted'].includes(s))return{c:C.green,bg:C.greenBg};
@@ -520,13 +522,13 @@ const CallMode=({lead,allCallable,leadIndex,onClose,onUpdate,onNext,onPrev})=>{
         {/* Call button(s) */}
         {lead.phone?(
           <div style={{marginBottom:24}}>
-            <a href={`tel:${dialNum(lead.phone)}`} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:12,width:'100%',padding:'18px 0',borderRadius:18,background:'linear-gradient(135deg,#16a34a,#22c55e)',textDecoration:'none',boxShadow:'0 0 40px rgba(34,197,94,0.25)',animation:'ring 2.5s ease infinite'}}>
+            <a href={callHref(lead.phone)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:12,width:'100%',padding:'18px 0',borderRadius:18,background:'linear-gradient(135deg,#16a34a,#22c55e)',textDecoration:'none',boxShadow:'0 0 40px rgba(34,197,94,0.25)',animation:'ring 2.5s ease infinite'}}>
               <span style={{fontSize:26}}>📞</span><span style={{fontSize:20,fontWeight:900,color:'#000'}}>Call Now</span>
             </a>
             {(hasPhone2||hasPhone3)&&(
               <div style={{display:'flex',gap:8,marginTop:8}}>
-                {hasPhone2&&<a href={`tel:${dialNum(lead.phone2)}`} style={{flex:1,padding:'10px',borderRadius:12,background:C.blueBg,border:`1px solid ${C.blue}33`,textDecoration:'none',textAlign:'center',fontSize:12,color:C.blue,fontWeight:700}}>📞 Alt 1: {lead.phone2}</a>}
-                {hasPhone3&&<a href={`tel:${dialNum(lead.phone3)}`} style={{flex:1,padding:'10px',borderRadius:12,background:C.blueBg,border:`1px solid ${C.blue}33`,textDecoration:'none',textAlign:'center',fontSize:12,color:C.blue,fontWeight:700}}>📞 Alt 2: {lead.phone3}</a>}
+                {hasPhone2&&<a href={callHref(lead.phone2)} style={{flex:1,padding:'10px',borderRadius:12,background:C.blueBg,border:`1px solid ${C.blue}33`,textDecoration:'none',textAlign:'center',fontSize:12,color:C.blue,fontWeight:700}}>📞 Alt 1: {lead.phone2}</a>}
+                {hasPhone3&&<a href={callHref(lead.phone3)} style={{flex:1,padding:'10px',borderRadius:12,background:C.blueBg,border:`1px solid ${C.blue}33`,textDecoration:'none',textAlign:'center',fontSize:12,color:C.blue,fontWeight:700}}>📞 Alt 2: {lead.phone3}</a>}
               </div>
             )}
           </div>
@@ -856,7 +858,7 @@ const LeadsTab=({surplus,setSurplus,foreclosure,setForeclosure,seller,setSeller,
 
                 <div style={{display:'flex',gap:8}}>
                   {l.phone&&<button onClick={()=>onCallMode(l,subTab,callable)} style={{flex:1,padding:'10px',borderRadius:10,background:C.green,border:'none',color:'#000',fontSize:13,fontWeight:800,cursor:'pointer'}}>📞 Call Mode</button>}
-                  {l.phone&&<a href={`tel:${dialNum(l.phone)}`} style={{padding:'10px 14px',borderRadius:10,background:C.greenBg,border:`1px solid ${C.green}44`,color:C.green,fontSize:13,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center'}}>Dial</a>}
+                  {l.phone&&<a href={callHref(l.phone)} style={{padding:'10px 14px',borderRadius:10,background:C.greenBg,border:`1px solid ${C.green}44`,color:C.green,fontSize:13,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center'}}>Dial</a>}
                   <button onClick={()=>remove(l.id)} style={{padding:'10px 12px',borderRadius:10,background:C.redBg,border:`1px solid ${C.red}33`,color:C.red,fontSize:12,cursor:'pointer',fontWeight:700}}>🗑</button>
                 </div>
               </div>
@@ -960,7 +962,7 @@ const Dashboard=({surplus,foreclosure,seller,agency,onCallMode,onNavigate})=>{
             <div style={{fontSize:13,fontWeight:700,color:C.white}}>{b.name}</div>
             <div style={{fontSize:11,color:C.orange,marginTop:2}}>{b.need}</div>
           </div>
-          <a href={`tel:${b.contact.replace(/\D/g,'')}`} style={{background:C.greenBg,border:`1px solid ${C.green}44`,borderRadius:8,padding:'6px 10px',textDecoration:'none',fontSize:11,color:C.green,fontWeight:700,whiteSpace:'nowrap',flexShrink:0}}>📞</a>
+          <a href={callHref(b.contact)} style={{background:C.greenBg,border:`1px solid ${C.green}44`,borderRadius:8,padding:'6px 10px',textDecoration:'none',fontSize:11,color:C.green,fontWeight:700,whiteSpace:'nowrap',flexShrink:0}}>📞</a>
         </div>
       ))}
     </div>
@@ -1037,7 +1039,7 @@ const AgencyTab=({clients,setClients,onCallMode})=>{
               <textarea value={c.notes||''} onChange={e=>upd(c.id,{notes:e.target.value})} placeholder="Notes..." rows={2} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:`1px solid ${C.border}`,background:'#0d0d0d',color:C.white,fontSize:12,resize:'none',outline:'none',marginBottom:10}}/>
               <div style={{display:'flex',gap:8}}>
                 {c.phone&&<button onClick={()=>onCallMode({...c,type:'agency'},null,[])} style={{flex:1,padding:'10px',borderRadius:10,background:C.green,border:'none',color:'#000',fontSize:13,fontWeight:800,cursor:'pointer'}}>📞 Call Mode</button>}
-                {c.phone&&<a href={`tel:${dialNum(c.phone)}`} style={{padding:'10px 14px',borderRadius:10,background:C.greenBg,border:`1px solid ${C.green}44`,color:C.green,fontSize:13,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center'}}>Dial</a>}
+                {c.phone&&<a href={callHref(c.phone)} style={{padding:'10px 14px',borderRadius:10,background:C.greenBg,border:`1px solid ${C.green}44`,color:C.green,fontSize:13,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center'}}>Dial</a>}
               </div>
             </div>
           )}
@@ -1059,7 +1061,7 @@ const BuyersTab=()=>(
         <div key={i} style={{marginBottom:i<URGENT_BUYERS.length-1?12:0}}>
           <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:4}}>
             <span style={{fontSize:13,fontWeight:700,color:C.white}}>{b.name}</span>
-            <a href={`tel:${b.contact.replace(/\D/g,'')}`} style={{fontSize:11,color:C.green,fontWeight:700,textDecoration:'none',background:C.greenBg,padding:'3px 8px',borderRadius:8}}>📞 {b.contact}</a>
+            <a href={callHref(b.contact)} style={{fontSize:11,color:C.green,fontWeight:700,textDecoration:'none',background:C.greenBg,padding:'3px 8px',borderRadius:8}}>📞 {b.contact}</a>
           </div>
           <div style={{fontSize:12,color:C.orange,marginTop:2}}>{b.need}</div>
         </div>
@@ -1341,6 +1343,8 @@ const App=()=>{
   const [tab,setTab]=useState('dashboard');
   const [navTarget,setNavTarget]=useState(null);
   const navigateTo=(nav)=>{setNavTarget(nav);setTab('leads');};
+  const [useGV,setUseGV]=useState(()=>localStorage.getItem('rf_use_gv')==='true');
+  const toggleGV=()=>{const n=!useGV;_useGV=n;localStorage.setItem('rf_use_gv',String(n));setUseGV(n);};
   const [surplus,setSurplus]=useState(()=>load('rf_surplus',INIT_SURPLUS));
   const [foreclosure,setForeclosure]=useState(()=>load('rf_fc',INIT_FORECLOSURE));
   const [seller,setSeller]=useState(()=>load('rf_seller',INIT_SELLER));
@@ -1380,13 +1384,20 @@ const App=()=>{
         {tab==='deals'&&<DealCalcTab/>}
       </>}
       {!callState&&(
-        <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:480,background:'rgba(10,10,10,0.97)',backdropFilter:'blur(20px)',borderTop:`1px solid ${C.border}`,display:'flex',padding:'10px 0 30px',zIndex:100}}>
-          {TABS.map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'4px 0'}}>
-              <span style={{fontSize:20,filter:tab===t.id?'none':'grayscale(1) opacity(0.4)'}}>{t.icon}</span>
-              <span style={{fontSize:10,fontWeight:tab===t.id?800:500,color:tab===t.id?C.gold:C.inkL}}>{t.label}</span>
-            </button>
-          ))}
+        <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:480,background:'rgba(10,10,10,0.97)',backdropFilter:'blur(20px)',borderTop:`1px solid ${C.border}`,zIndex:100}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'7px 16px 5px',borderBottom:`1px solid ${C.border}`}}>
+            <span style={{fontSize:10,color:C.inkL,fontWeight:600,marginRight:2}}>CALL VIA</span>
+            <button onClick={()=>useGV&&toggleGV()} style={{padding:'3px 12px',borderRadius:20,fontSize:11,fontWeight:700,cursor:'pointer',border:`1px solid ${C.green}66`,background:!useGV?C.greenBg:'transparent',color:!useGV?C.green:'#555',transition:'all 0.2s'}}>📱 Personal</button>
+            <button onClick={()=>!useGV&&toggleGV()} style={{padding:'3px 12px',borderRadius:20,fontSize:11,fontWeight:700,cursor:'pointer',border:'1px solid rgba(66,133,244,0.4)',background:useGV?'rgba(66,133,244,0.15)':'transparent',color:useGV?'#4285f4':'#555',transition:'all 0.2s'}}>📞 Google Voice</button>
+          </div>
+          <div style={{display:'flex',padding:'8px 0 30px'}}>
+            {TABS.map(t=>(
+              <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:'none',border:'none',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'4px 0'}}>
+                <span style={{fontSize:20,filter:tab===t.id?'none':'grayscale(1) opacity(0.4)'}}>{t.icon}</span>
+                <span style={{fontSize:10,fontWeight:tab===t.id?800:500,color:tab===t.id?C.gold:C.inkL}}>{t.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>
