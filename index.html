@@ -620,7 +620,7 @@ const SUB_TABS=[
   {id:'foreclosure',label:'⚠️ Foreclosure',color:C.orange},
 ];
 
-const LeadsTab=({surplus,setSurplus,foreclosure,setForeclosure,seller,setSeller,onCallMode})=>{
+const LeadsTab=({surplus,setSurplus,foreclosure,setForeclosure,seller,setSeller,onCallMode,navTarget,clearNavTarget})=>{
   const [subTab,setSubTab]=useState('seller');
   const [search,setSearch]=useState('');
   const [filter,setFilter]=useState('all');
@@ -629,6 +629,16 @@ const LeadsTab=({surplus,setSurplus,foreclosure,setForeclosure,seller,setSeller,
   const [sourceFilter,setSourceFilter]=useState('all');
   const [sortBy,setSortBy]=useState('equity');
   const [stateFilter,setStateFilter]=useState('all');
+  const {useEffect}=React;
+  useEffect(()=>{
+    if(navTarget){
+      setSubTab(navTarget.subTab||'seller');
+      setFilter(navTarget.filter||'all');
+      setSortBy(navTarget.sortBy||'equity');
+      setSearch('');setSourceFilter('all');setStateFilter('all');setExpanded(null);
+      clearNavTarget&&clearNavTarget();
+    }
+  },[navTarget]);
 
   const leads   = subTab==='surplus'?surplus:subTab==='foreclosure'?foreclosure:seller;
   const setLeads= subTab==='surplus'?setSurplus:subTab==='foreclosure'?setForeclosure:setSeller;
@@ -860,7 +870,7 @@ const LeadsTab=({surplus,setSurplus,foreclosure,setForeclosure,seller,setSeller,
 
 // ─── DASHBOARD ────────────────────────────────────────────────────────────────
 
-const Dashboard=({surplus,foreclosure,seller,agency,onCallMode})=>{
+const Dashboard=({surplus,foreclosure,seller,agency,onCallMode,onNavigate})=>{
   const surplusReady=surplus.filter(l=>l.phone&&!['Not Interested','Dead'].includes(l.status));
   const sellerReady=seller.filter(l=>l.phone&&!['Not Interested','Dead'].includes(l.status));
   const totalProj=surplus.reduce((a,l)=>a+(l.cut||0),0);
@@ -931,14 +941,14 @@ const Dashboard=({surplus,foreclosure,seller,agency,onCallMode})=>{
       {/* Pipeline */}
       <h2 style={{fontSize:14,fontWeight:700,color:C.white,marginBottom:10,marginTop:20}}>Pipeline</h2>
       {[
-        {name:'Surplus Funds',val:fmt$(totalProj),sub:`${surplusReady.length} ready to call`,color:C.green},
-        {name:'Seller / Wholesale',val:`${seller.length} leads`,sub:sellerReady.length>0?`${sellerReady.length} w/ phone`:'Import list to start',color:C.teal},
-        {name:'Foreclosure',val:`${foreclosure.length} leads`,sub:'Pull county NOD list',color:C.orange},
-        {name:'Agency',val:mrr>0?fmt$(mrr)+'/mo':'$0 MRR',sub:activeAgency.length>0?`${activeAgency.length} active clients`:'Pitch first restaurant',color:C.gold},
+        {name:'Surplus Funds',val:fmt$(totalProj),sub:`${surplusReady.length} ready to call · tap to dial`,color:C.green,nav:{subTab:'surplus',filter:'phone',sortBy:'equity'}},
+        {name:'Seller / Wholesale',val:`${seller.length} leads`,sub:sellerReady.length>0?`${sellerReady.length} hot leads · tap to dial`:'Import list to start',color:C.teal,nav:{subTab:'seller',filter:'hot',sortBy:'equity'}},
+        {name:'Foreclosure',val:`${foreclosure.length} leads`,sub:'Tap to view pre-foreclosure list',color:C.orange,nav:{subTab:'foreclosure',filter:'phone',sortBy:'equity'}},
+        {name:'Agency',val:mrr>0?fmt$(mrr)+'/mo':'$0 MRR',sub:activeAgency.length>0?`${activeAgency.length} active clients`:'Pitch first restaurant',color:C.gold,nav:null},
       ].map((p,i)=>(
-        <div key={i} style={{background:C.card2,borderRadius:12,padding:14,marginBottom:8,border:`1px solid ${C.border}`,display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+        <div key={i} onClick={()=>p.nav&&onNavigate&&onNavigate(p.nav)} style={{background:C.card2,borderRadius:12,padding:14,marginBottom:8,border:`1px solid ${p.nav?p.color:C.border}`,display:'flex',justifyContent:'space-between',alignItems:'center',cursor:p.nav?'pointer':'default',transition:'opacity 0.15s'}} onMouseDown={e=>{if(p.nav)e.currentTarget.style.opacity='0.7';}} onMouseUp={e=>e.currentTarget.style.opacity='1'}>
           <div><div style={{fontSize:14,fontWeight:700,color:C.white}}>{p.name}</div><div style={{fontSize:12,color:C.inkM,marginTop:2}}>{p.sub}</div></div>
-          <div style={{fontSize:16,fontWeight:800,color:p.color}}>{p.val}</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}><div style={{fontSize:16,fontWeight:800,color:p.color}}>{p.val}</div>{p.nav&&<span style={{fontSize:16,color:p.color}}>›</span>}</div>
         </div>
       ))}
 
@@ -1329,6 +1339,8 @@ const load=(key,fallback)=>{try{const s=localStorage.getItem(key);return s?JSON.
 
 const App=()=>{
   const [tab,setTab]=useState('dashboard');
+  const [navTarget,setNavTarget]=useState(null);
+  const navigateTo=(nav)=>{setNavTarget(nav);setTab('leads');};
   const [surplus,setSurplus]=useState(()=>load('rf_surplus',INIT_SURPLUS));
   const [foreclosure,setForeclosure]=useState(()=>load('rf_fc',INIT_FORECLOSURE));
   const [seller,setSeller]=useState(()=>load('rf_seller',INIT_SELLER));
@@ -1361,8 +1373,8 @@ const App=()=>{
       <div style={{height:48}}/>
       {callState&&<CallMode key={callState.lead.id} lead={callState.lead} allCallable={callState.callable} leadIndex={callIdx} onClose={()=>setCallState(null)} onUpdate={updateLead} onNext={goNext} onPrev={goPrev}/>}
       {!callState&&<>
-        {tab==='dashboard'&&<Dashboard surplus={surplus} foreclosure={foreclosure} seller={seller} agency={agency} onCallMode={openCallMode}/>}
-        {tab==='leads'&&<LeadsTab surplus={surplus} setSurplus={setSurplus} foreclosure={foreclosure} setForeclosure={setForeclosure} seller={seller} setSeller={setSeller} onCallMode={openCallMode}/>}
+        {tab==='dashboard'&&<Dashboard surplus={surplus} foreclosure={foreclosure} seller={seller} agency={agency} onCallMode={openCallMode} onNavigate={navigateTo}/>}
+        {tab==='leads'&&<LeadsTab surplus={surplus} setSurplus={setSurplus} foreclosure={foreclosure} setForeclosure={setForeclosure} seller={seller} setSeller={setSeller} onCallMode={openCallMode} navTarget={navTarget} clearNavTarget={()=>setNavTarget(null)}/>}
         {tab==='agency'&&<AgencyTab clients={agency} setClients={setAgency} onCallMode={openCallMode}/>}
         {tab==='buyers'&&<BuyersTab/>}
         {tab==='deals'&&<DealCalcTab/>}
