@@ -627,20 +627,30 @@ const LeadsTab=({surplus,setSurplus,foreclosure,setForeclosure,seller,setSeller,
   const [expanded,setExpanded]=useState(null);
   const [showImport,setShowImport]=useState(false);
   const [sourceFilter,setSourceFilter]=useState('all');
+  const [sortBy,setSortBy]=useState('equity');
+  const [stateFilter,setStateFilter]=useState('all');
 
   const leads   = subTab==='surplus'?surplus:subTab==='foreclosure'?foreclosure:seller;
   const setLeads= subTab==='surplus'?setSurplus:subTab==='foreclosure'?setForeclosure:setSeller;
 
-  // Unique sources in current list
+  // Unique sources and states in current list
   const sources=[...new Set(leads.map(l=>l.source).filter(Boolean))];
+  const states=[...new Set(leads.map(l=>{const m=l.fullAddress&&l.fullAddress.match(/,\s*([A-Z]{2})\s*,/);return m?m[1]:null;}).filter(Boolean))].sort();
 
   const filtered=leads.filter(l=>{
     if(filter==='phone'&&!l.phone)return false;
     if(filter==='no-phone'&&l.phone)return false;
+    if(filter==='hot'&&(!(l.phone)&&!(l.phone2)||l.equity<50000))return false;
     if(sourceFilter!=='all'&&l.source!==sourceFilter)return false;
+    if(stateFilter!=='all'){const m=l.fullAddress&&l.fullAddress.match(/,\s*([A-Z]{2})\s*,/);if(!m||m[1]!==stateFilter)return false;}
     const q=search.toLowerCase();
     if(q&&!JSON.stringify(l).toLowerCase().includes(q))return false;
     return true;
+  }).sort((a,b)=>{
+    if(sortBy==='equity')return(b.equity||0)-(a.equity||0);
+    if(sortBy==='price')return(b.estValue||0)-(a.estValue||0);
+    if(sortBy==='newest')return new Date(b.importedAt||0)-new Date(a.importedAt||0);
+    return 0;
   });
 
   const upd=(id,patch)=>setLeads(prev=>prev.map(l=>l.id===id?{...l,...patch}:l));
@@ -681,7 +691,7 @@ const LeadsTab=({surplus,setSurplus,foreclosure,setForeclosure,seller,setSeller,
       {/* Sub tabs */}
       <div style={{display:'flex',gap:6,marginBottom:14}}>
         {SUB_TABS.map(t=>(
-          <button key={t.id} onClick={()=>{setSubTab(t.id);setExpanded(null);setSearch('');setFilter('all');setSourceFilter('all');}}
+          <button key={t.id} onClick={()=>{setSubTab(t.id);setExpanded(null);setSearch('');setFilter('all');setSourceFilter('all');setSortBy('equity');setStateFilter('all');}}
             style={{flex:1,padding:'9px 4px',borderRadius:12,border:`2px solid ${subTab===t.id?t.color:C.border}`,background:subTab===t.id?t.color+'22':'#111',color:subTab===t.id?t.color:C.inkM,fontSize:11,fontWeight:700,cursor:'pointer'}}>
             {t.label}<br/><span style={{fontSize:10,opacity:0.7}}>{(subTab===t.id?leads:subTab==='surplus'?surplus:subTab==='foreclosure'?foreclosure:seller).length===0?'0':(subTab===t.id?leads:leads).length||leads.length}</span>
           </button>
@@ -697,9 +707,24 @@ const LeadsTab=({surplus,setSurplus,foreclosure,setForeclosure,seller,setSeller,
 
       {/* Filters */}
       <div style={{display:'flex',gap:6,marginBottom:sources.length?8:14,overflowX:'auto',paddingBottom:2}}>
-        {[['all',`All (${leads.length})`],['phone','📱 Has Phone'],['no-phone','🔍 Need Trace']].map(([v,l])=>(
+        {[['all',`All (${leads.length})`],['phone','📱 Has Phone'],['hot','🔥 Hot (Phone+Equity)'],['no-phone','🔍 Need Trace']].map(([v,l])=>(
           <button key={v} onClick={()=>setFilter(v)} style={{padding:'6px 12px',borderRadius:20,border:'none',background:filter===v?C.gold:'#1a1a1a',color:filter===v?'#000':C.inkM,fontSize:12,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap'}}>{l}</button>
         ))}
+      </div>
+
+      {/* Sort + State filter row */}
+      <div style={{display:'flex',gap:6,marginBottom:10,overflowX:'auto',paddingBottom:2,alignItems:'center'}}>
+        <span style={{fontSize:10,color:C.inkL,flexShrink:0}}>Sort:</span>
+        {[['equity','💰 Equity'],['price','🏠 Value'],['newest','🕐 Newest']].map(([v,l])=>(
+          <button key={v} onClick={()=>setSortBy(v)} style={{padding:'5px 10px',borderRadius:20,border:'none',background:sortBy===v?C.orange:'#1a1a1a',color:sortBy===v?'#000':C.inkM,fontSize:11,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>{l}</button>
+        ))}
+        {states.length>0&&<>
+          <span style={{fontSize:10,color:C.inkL,flexShrink:0,marginLeft:6}}>State:</span>
+          <select value={stateFilter} onChange={e=>setStateFilter(e.target.value)} style={{padding:'5px 8px',borderRadius:20,border:'none',background:'#1a1a1a',color:C.inkM,fontSize:11,fontWeight:600,cursor:'pointer'}}>
+            <option value="all">All</option>
+            {states.map(s=><option key={s} value={s}>{s}</option>)}
+          </select>
+        </>}
       </div>
 
       {/* Source filter pills (for imported lists) */}
@@ -1047,6 +1072,7 @@ const BuyersTab=()=>(
 
 const DealCalcTab=()=>{
   const CALC_TABS=[
+    {id:'novation',label:'⭐ Novation',color:C.gold},
     {id:'subto',label:'🔑 Sub-To',color:C.teal},
     {id:'sf',label:'📝 Seller Fin',color:C.purple},
     {id:'wholesale',label:'🔄 Wholesale',color:C.orange},
@@ -1057,6 +1083,7 @@ const DealCalcTab=()=>{
   const [sto,setSto]=useState({listPrice:589000,loanBal:380000,loanRate:3.5,existingPayment:1900,rent:3000,taxes:540,insurance:150,maintenance:150,pm:10,equityPayment:30000});
   const [sf,setSf]=useState({price:589000,down:50000,rate:5.0,term:30,amortType:'amort',rent:3000,taxes:540,insurance:150,maintenance:150,pm:10});
   const [ws,setWs]=useState({arv:589000,repairs:0,assignFee:20000});
+  const [nov,setNov]=useState({arv:300000,repairs:0,agentComm:6,closingCosts:2,yourFee:15000,daysOnMarket:45});
   const [br,setBr]=useState({purchase:400000,rehab:30000,arv:500000,refiLtv:75,refiRate:7.0,refiTerm:30,rent:3000,taxes:500,insurance:150,maintenance:150,pm:10});
   const [rl,setRl]=useState({price:589000,down:20,rate:7.0,term:30,rent:3000,vacancy:5,taxes:540,insurance:150,maintenance:150,pm:10});
   const fmt=(n)=>`$${Math.abs(n).toLocaleString('en-US',{maximumFractionDigits:0})}`;
@@ -1102,6 +1129,7 @@ const DealCalcTab=()=>{
   const stoR=()=>{const pm=sto.rent*(sto.pm/100);const out=sto.existingPayment+sto.taxes+sto.insurance+sto.maintenance+pm;const cf=sto.rent-out;const equity=sto.listPrice-sto.loanBal;const coc=sto.equityPayment>0?(cf*12/sto.equityPayment*100):0;return{cf,equity,out,coc};};
   const sfR=()=>{const loan=sf.price-sf.down;const mr=sf.rate/100/12;const n=sf.term*12;const pymt=sf.amortType==='io'?loan*mr:pmt(loan,mr,n);const pm=sf.rent*(sf.pm/100);const out=pymt+sf.taxes+sf.insurance+sf.maintenance+pm;const cf=sf.rent-out;const coc=sf.down>0?(cf*12/sf.down*100):0;return{loan,pymt,out,cf,coc};};
   const wsR=()=>({mao65:ws.arv*0.65-ws.repairs,mao70:ws.arv*0.70-ws.repairs,mao75:ws.arv*0.75-ws.repairs,offer:ws.arv*0.70-ws.repairs-ws.assignFee});
+  const novR=()=>{const listPrice=nov.arv;const agentFee=listPrice*(nov.agentComm/100);const closingCosts=listPrice*(nov.closingCosts/100);const sellerNet=listPrice-agentFee-closingCosts-nov.repairs-nov.yourFee;const cashOffer=nov.arv*0.70-nov.repairs;const vsWholesale=sellerNet-cashOffer;const yourProfit=nov.yourFee;return{listPrice,agentFee,closingCosts,sellerNet,cashOffer,vsWholesale,yourProfit};};
   const brR=()=>{const allIn=br.purchase+br.rehab;const refiAmt=br.arv*(br.refiLtv/100);const cashOut=refiAmt-allIn;const cashLeft=Math.max(0,allIn-refiAmt);const mr=br.refiRate/100/12;const n=br.refiTerm*12;const mortPmt=pmt(refiAmt,mr,n);const pm=br.rent*(br.pm/100);const out=mortPmt+br.taxes+br.insurance+br.maintenance+pm;const cf=br.rent-out;const coc=cashLeft>0?(cf*12/cashLeft*100):Infinity;const equity=br.arv-refiAmt;return{allIn,refiAmt,cashOut,cashLeft,mortPmt,cf,coc,equity};};
   const rlR=()=>{const dn=rl.price*(rl.down/100);const loan=rl.price-dn;const mr=rl.rate/100/12;const n=rl.term*12;const mortPmt=pmt(loan,mr,n);const effRent=rl.rent*(1-rl.vacancy/100);const pm=effRent*(rl.pm/100);const out=mortPmt+rl.taxes+rl.insurance+rl.maintenance+pm;const cf=effRent-out;const noi=effRent-rl.taxes-rl.insurance-rl.maintenance-pm;const capRate=(noi*12)/rl.price*100;const grm=rl.price/(rl.rent*12);const coc=dn>0?(cf*12/dn*100):0;return{dn,loan,mortPmt,effRent,cf,noi,capRate,grm,coc,out};};
   const s=stoR(),f=sfR(),w=wsR(),b=brR(),r=rlR();
@@ -1171,6 +1199,45 @@ const DealCalcTab=()=>{
           <CFBlock cf={f.cf} extra={[{label:'CoC Return',val:`${f.coc.toFixed(1)}%`,color:f.coc>8?C.green:f.coc>0?C.orange:C.red}]}/>
         </Card>
       </div>}
+      {mode==='novation'&&(()=>{const nv=novR();return(<div>
+        <Card color={C.gold} title="🏠 Property Details">
+          <Inp val={nov.arv} set={v=>setNov(p=>({...p,arv:v}))} label="ARV / Expected List Price"/>
+          <Inp val={nov.repairs} set={v=>setNov(p=>({...p,repairs:v}))} label="Repairs Needed (if any)"/>
+          <Inp val={nov.yourFee} set={v=>setNov(p=>({...p,yourFee:v}))} label="Your Fee at Closing"/>
+        </Card>
+        <Card color={C.gold} title="📊 Costs">
+          <Inp val={nov.agentComm} set={v=>setNov(p=>({...p,agentComm:v}))} label="Agent Commission %" pre="%"/>
+          <Inp val={nov.closingCosts} set={v=>setNov(p=>({...p,closingCosts:v}))} label="Closing Costs %" pre="%"/>
+        </Card>
+        <Card color={C.gold} title="💰 Novation Analysis">
+          <Row label="List Price" val={fmt(nv.listPrice)}/>
+          <Row label="Agent Commission" val={`-${fmt(nv.agentFee)}`} color={C.red}/>
+          <Row label="Closing Costs" val={`-${fmt(nv.closingCosts)}`} color={C.red}/>
+          <Row label="Repairs" val={`-${fmt(nov.repairs)}`} color={C.red}/>
+          <Row label="Your Fee" val={`-${fmt(nov.yourFee)}`} color={C.orange}/>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',padding:'12px 0 4px',borderTop:`1px solid ${C.border}`,marginTop:6}}>
+            <div style={{fontSize:13,fontWeight:700,color:C.inkM}}>Seller Nets</div>
+            <div style={{fontSize:26,fontWeight:900,color:C.gold}}>{fmt(nv.sellerNet)}</div>
+          </div>
+          <div style={{display:'flex',gap:8,marginTop:10}}>
+            <div style={{flex:1,background:C.card2,borderRadius:10,padding:10,textAlign:'center'}}>
+              <div style={{fontSize:9,color:C.inkM,marginBottom:2}}>Cash Offer (70%)</div>
+              <div style={{fontSize:14,fontWeight:800,color:C.orange}}>{fmt(nv.cashOffer)}</div>
+            </div>
+            <div style={{flex:1,background:C.card2,borderRadius:10,padding:10,textAlign:'center'}}>
+              <div style={{fontSize:9,color:C.inkM,marginBottom:2}}>Seller Gets MORE</div>
+              <div style={{fontSize:14,fontWeight:800,color:nv.vsWholesale>0?C.green:C.red}}>{nv.vsWholesale>=0?'+':''}{fmt(nv.vsWholesale)}</div>
+            </div>
+            <div style={{flex:1,background:C.card2,borderRadius:10,padding:10,textAlign:'center'}}>
+              <div style={{fontSize:9,color:C.inkM,marginBottom:2}}>Your Profit</div>
+              <div style={{fontSize:14,fontWeight:800,color:C.gold}}>{fmt(nv.yourProfit)}</div>
+            </div>
+          </div>
+          <div style={{marginTop:12,padding:10,background:'#2a1f0022',borderRadius:10,borderLeft:`3px solid ${C.gold}`}}>
+            <div style={{fontSize:11,fontWeight:700,color:C.gold}}>Pitch: "I can get you {fmt(nv.sellerNet)} — that's {fmt(nv.vsWholesale)} MORE than a cash buyer."</div>
+          </div>
+        </Card>
+      </div>);})()}
       {mode==='wholesale'&&<div>
         <Card color={C.orange} title="Deal Numbers">
           <Inp val={ws.arv} set={v=>setWs(p=>({...p,arv:v}))} label="After Repair Value (ARV)"/>
