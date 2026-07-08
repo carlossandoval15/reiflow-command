@@ -66,6 +66,30 @@ const INIT_SELLER=[{"id":"SL-B-0000","type":"seller","propType":"Single Family",
 })();
 // ─────────────────────────────────────────────────────────────────────────────
 
+
+// ─── LEAD SEED (iSpeedToLead import 2026-04-08) ───────────────────────────────
+(function(){
+  try {
+    var sellerKey = 'rf_seller';
+    var fcKey = 'rf_fc';
+    var existing_s = JSON.parse(localStorage.getItem(sellerKey) || '[]');
+    var existing_fc = JSON.parse(localStorage.getItem(fcKey) || '[]');
+    // Seed if localStorage is empty or has fewer leads than INIT
+    if (existing_s.length < INIT_SELLER.length) {
+      // Merge: keep any existing user leads, prepend INIT leads
+      var existingIds = new Set(existing_s.map(function(l){return l.id;}));
+      var newLeads = INIT_SELLER.filter(function(l){return !existingIds.has(l.id);});
+      localStorage.setItem(sellerKey, JSON.stringify(newLeads.concat(existing_s)));
+    }
+    if (existing_fc.length < INIT_FORECLOSURE.length) {
+      var existingFcIds = new Set(existing_fc.map(function(l){return l.id;}));
+      var newFcLeads = INIT_FORECLOSURE.filter(function(l){return !existingFcIds.has(l.id);});
+      localStorage.setItem(fcKey, JSON.stringify(newFcLeads.concat(existing_fc)));
+    }
+  } catch(e) {}
+})();
+// ─────────────────────────────────────────────────────────────────────────────
+
 const INIT_AGENCY=[{id:'R-001',type:'agency',name:'',contact:'',phone:'',email:'',service:'Social Media Management',retainer:0,status:'Prospect',notes:''}];
 
 const BUYERS=[
