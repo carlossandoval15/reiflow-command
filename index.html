@@ -97,7 +97,7 @@ const INIT_SELLER=[{"id":"SL-B-0000","type":"seller","propType":"Single Family",
     var fcKey = 'rf_fc';
     var existing_fc = JSON.parse(localStorage.getItem(fcKey) || '[]');
     var existingFcIds = new Set(existing_fc.map(function(l){return l.id;}));
-    var treLeads = INIT_FORECLOSURE.filter(function(l){return l.id.startsWith('FC-TRE-') && \!existingFcIds.has(l.id);});
+    var treLeads = INIT_FORECLOSURE.filter(function(l){return l.id.startsWith('FC-TRE-') && !existingFcIds.has(l.id);});
     if (treLeads.length > 0) {
       localStorage.setItem(fcKey, JSON.stringify(treLeads.concat(existing_fc)));
     }
