@@ -12,6 +12,17 @@ dist
 dist-ssr
 *.local
 
+# DealSauce nightly pull automation — never commit the browser session or raw exports
+dealsauce-bin/.dealsauce-profile
+dealsauce-bin/incoming
+dealsauce-bin/.rotation-state.json
+
+# Raw lead JSON — PII (names/phones/emails). Data is still baked into index.html
+# for the dashboard to render, but not also committed as directly-fetchable
+# standalone files. Local copies remain the pipeline's source of truth.
+reiflow_sellers.json
+reiflow_foreclosures.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

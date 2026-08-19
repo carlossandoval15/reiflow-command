@@ -1,0 +1,9 @@
+{
+  "name": "dealsauce-nightly-pull",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "^1.48.0"
+  }
+}

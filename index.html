@@ -23,6 +23,34 @@ input,textarea,select{font-family:'Inter',sans-serif}
 </style>
 </head>
 <body>
+<div id="rf-gate" style="position:fixed;inset:0;z-index:99999;background:#0a0a0a;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,sans-serif;">
+  <form id="rf-gate-form" style="background:#141414;border:1px solid #242424;border-radius:14px;padding:32px;width:300px;text-align:center;">
+    <h2 style="margin:0 0 6px;color:#c9922a;">🔒 ReiFlow Command</h2>
+    <p style="color:#888;font-size:13px;margin:0 0 18px;">Enter passcode</p>
+    <div id="rf-gate-err" style="color:#ef4444;font-size:13px;margin-bottom:10px;display:none;">Wrong passcode — try again</div>
+    <input id="rf-gate-input" type="password" autofocus autocomplete="off" inputmode="text" style="width:100%;padding:12px;border-radius:8px;border:1px solid #242424;background:#0a0a0a;color:#e8e8e8;font-size:16px;box-sizing:border-box;margin-bottom:12px;">
+    <button type="submit" style="width:100%;padding:12px;border:none;border-radius:8px;background:#c9922a;color:#0a0a0a;font-weight:700;font-size:16px;cursor:pointer;">Unlock</button>
+  </form>
+</div>
+<script>
+(function(){
+  var PASSCODE = 'claire5307go';
+  var KEY = 'rf_gate_unlocked';
+  var gate = document.getElementById('rf-gate');
+  if (localStorage.getItem(KEY) === PASSCODE) { gate.style.display = 'none'; return; }
+  document.getElementById('rf-gate-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var val = document.getElementById('rf-gate-input').value;
+    if (val === PASSCODE) {
+      localStorage.setItem(KEY, val);
+      gate.style.display = 'none';
+    } else {
+      document.getElementById('rf-gate-err').style.display = 'block';
+      document.getElementById('rf-gate-input').value = '';
+    }
+  });
+})();
+</script>
 <div id="root"></div>
 <script type="text/babel">
 const {useState,useEffect,useRef,useCallback} = React;

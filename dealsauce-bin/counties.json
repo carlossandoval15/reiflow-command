@@ -1,0 +1,13 @@
+{
+  "_comment": "Rotation list for the nightly DealSauce pull. Round-robin: each run picks up where the last run left off (see .rotation-state.json), pulls the saved search 'preforeclosures w auction' for that location, and moves to the next location if it still needs more new addresses. Edit freely — add/remove markets any time.",
+  "locations": [
+    "Maricopa County, AZ",
+    "San Luis Obispo County, CA",
+    "Charlotte, NC",
+    "Tampa, FL",
+    "Houston, TX",
+    "Atlanta, GA",
+    "Columbus, OH",
+    "Sacramento, CA"
+  ]
+}
