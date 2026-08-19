@@ -527,13 +527,18 @@ const fmt$=v=>!v||isNaN(v)?'$0':v>=1000000?'$'+(v/1000000).toFixed(2)+'M':v>=100
 const fmtFull$=v=>'$'+Math.round(v||0).toLocaleString();
 const dialNum=p=>(p||'').replace(/\D/g,'');
 let _useGV=localStorage.getItem('rf_use_gv')==='true';
-const callHref=(p)=>{const num=dialNum(p);if(!num)return'#';if(_useGV){const e=num.length===10?`+1${num}`:num.length===11&&num[0]==='1'?`+${num}`:`+${num}`;return`https://voice.google.com/calls?a=nc&b=${encodeURIComponent(e)}`;}return`tel:${num}`;};
+const _fmtGV=(n)=>n.length===10?`%2B1${n}`:n[0]==='1'?`%2B${n}`:`%2B1${n}`;
+const callHref=(p)=>{const num=dialNum(p);if(!num)return'#';if(_useGV)return`https://voice.google.com/u/0/calls?a=nc&n=${_fmtGV(num)}`;return`tel:${num}`;};
+const textHref=(p)=>{const num=dialNum(p);if(!num)return'#';if(_useGV)return`https://voice.google.com/u/0/messages?a=nc&n=${_fmtGV(num)}`;return`sms:${num}`;};
 
 const statusColor=s=>{
-  if(['Ready to Call','Not Contacted'].includes(s))return{c:C.green,bg:C.greenBg};
+  if(['Ready to Call','Not Contacted','Cold'].includes(s))return{c:C.green,bg:C.greenBg};
   if(['Called','Left VM'].includes(s))return{c:C.blue,bg:C.blueBg};
-  if(['Follow Up','Callback'].includes(s))return{c:C.orange,bg:C.orangeBg};
-  if(['Signed Up','Active Client','Under Contract'].includes(s))return{c:C.gold,bg:'#2a1500'};
+  if(['Follow Up','Callback','Negotiating'].includes(s))return{c:C.orange,bg:C.orangeBg};
+  if(['Offer Made','Offer Sent'].includes(s))return{c:C.purple,bg:C.purpleBg};
+  if(['Offer Rejected'].includes(s))return{c:C.red,bg:C.redBg};
+  if(['Signed Up','Active Client','Under Contract','Contracted'].includes(s))return{c:C.gold,bg:'#2a1500'};
+  if(['Dispo'].includes(s))return{c:'#22d3ee',bg:'rgba(34,211,238,0.12)'};
   if(['Not Interested','Dead','Churned'].includes(s))return{c:C.inkL,bg:'#111'};
   if(s==='Need Skip Trace')return{c:C.orange,bg:C.orangeBg};
   if(s==='Pitched')return{c:C.purple,bg:C.purpleBg};
@@ -574,13 +579,17 @@ const CallMode=({lead,allCallable,leadIndex,onClose,onUpdate,onNext,onPrev})=>{
 
   const outcomes=lead.type==='agency'
     ?['No Answer','Left VM','Callback','Pitched','Signed!','Not Interested']
-    :['No Answer','Left VM','Callback','Follow Up','🎉 Signed Up!','Not Interested'];
+    :lead.type==='surplus'
+    ?['No Answer','Left VM','Callback','Follow Up','🎉 Signed Up!','Not Interested']
+    :['No Answer','Left VM','Callback','Negotiating','Offer Made','Contracted','Not Interested'];
 
   const [saved,setSaved]=useState(false);
   const confirmPick=()=>{
     if(!picked)return;
     const mapped={'Signed!':'Active Client','🎉 Signed Up!':'Signed Up'}[picked]||picked;
-    const updated={...lead,status:mapped,notes:note};
+    const logEntry={date:new Date().toISOString(),outcome:mapped,note:note||''};
+    const callLog=[...(lead.callLog||[]),logEntry];
+    const updated={...lead,status:mapped,notes:note,callLog};
     onUpdate(updated);
     const autoAdv=['No Answer','Left VM'].includes(picked);
     if(autoAdv){onNext();}
@@ -589,11 +598,11 @@ const CallMode=({lead,allCallable,leadIndex,onClose,onUpdate,onNext,onPrev})=>{
 
   const outcomeStyle=o=>{
     const isSelected=picked===o;
-    if(o.includes('Signed'))return{bg:isSelected?C.gold:'#2a1f00',color:isSelected?'#000':C.gold,fw:800,ring:isSelected?`0 0 0 2px ${C.gold}`:'none'};
+    if(o.includes('Signed')||o==='Contracted')return{bg:isSelected?C.gold:'#2a1f00',color:isSelected?'#000':C.gold,fw:800,ring:isSelected?`0 0 0 2px ${C.gold}`:'none'};
     if(o==='No Answer')return{bg:isSelected?'#333':'#1a1a1a',color:isSelected?C.white:C.inkM,fw:600,ring:isSelected?`0 0 0 2px ${C.inkM}`:'none'};
     if(o==='Left VM')return{bg:isSelected?C.blue:C.blueBg,color:isSelected?'#000':C.blue,fw:600,ring:isSelected?`0 0 0 2px ${C.blue}`:'none'};
-    if(o==='Callback'||o==='Follow Up')return{bg:isSelected?C.orange:C.orangeBg,color:isSelected?'#000':C.orange,fw:600,ring:isSelected?`0 0 0 2px ${C.orange}`:'none'};
-    if(o==='Pitched')return{bg:isSelected?C.purple:C.purpleBg,color:isSelected?'#fff':C.purple,fw:600,ring:isSelected?`0 0 0 2px ${C.purple}`:'none'};
+    if(o==='Callback'||o==='Follow Up'||o==='Negotiating')return{bg:isSelected?C.orange:C.orangeBg,color:isSelected?'#000':C.orange,fw:600,ring:isSelected?`0 0 0 2px ${C.orange}`:'none'};
+    if(o==='Pitched'||o==='Offer Made')return{bg:isSelected?C.purple:C.purpleBg,color:isSelected?'#fff':C.purple,fw:600,ring:isSelected?`0 0 0 2px ${C.purple}`:'none'};
     if(o==='Not Interested')return{bg:isSelected?C.red:'#1a1a1a',color:isSelected?'#fff':C.red,fw:500,ring:isSelected?`0 0 0 2px ${C.red}`:'none'};
     return{bg:'#1a1a1a',color:C.inkM,fw:500,ring:'none'};
   };
@@ -622,13 +631,20 @@ const CallMode=({lead,allCallable,leadIndex,onClose,onUpdate,onNext,onPrev})=>{
         {/* Call button(s) */}
         {lead.phone?(
           <div style={{marginBottom:24}}>
-            <a href={callHref(lead.phone)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:12,width:'100%',padding:'18px 0',borderRadius:18,background:'linear-gradient(135deg,#16a34a,#22c55e)',textDecoration:'none',boxShadow:'0 0 40px rgba(34,197,94,0.25)',animation:'ring 2.5s ease infinite'}}>
-              <span style={{fontSize:26}}>📞</span><span style={{fontSize:20,fontWeight:900,color:'#000'}}>Call Now</span>
-            </a>
+            <div style={{display:'flex',gap:8}}>
+              <a href={callHref(lead.phone)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,flex:3,padding:'18px 0',borderRadius:18,background:'linear-gradient(135deg,#16a34a,#22c55e)',textDecoration:'none',boxShadow:'0 0 40px rgba(34,197,94,0.25)',animation:'ring 2.5s ease infinite'}}>
+                <span style={{fontSize:26}}>📞</span><span style={{fontSize:20,fontWeight:900,color:'#000'}}>Call</span>
+              </a>
+              <a href={textHref(lead.phone)} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,flex:2,padding:'18px 0',borderRadius:18,background:'linear-gradient(135deg,#2563eb,#3b82f6)',textDecoration:'none',boxShadow:'0 0 30px rgba(59,130,246,0.2)'}}>
+                <span style={{fontSize:22}}>💬</span><span style={{fontSize:18,fontWeight:900,color:'#fff'}}>Text</span>
+              </a>
+            </div>
             {(hasPhone2||hasPhone3)&&(
-              <div style={{display:'flex',gap:8,marginTop:8}}>
+              <div style={{display:'flex',gap:8,marginTop:8,flexWrap:'wrap'}}>
                 {hasPhone2&&<a href={callHref(lead.phone2)} style={{flex:1,padding:'10px',borderRadius:12,background:C.blueBg,border:`1px solid ${C.blue}33`,textDecoration:'none',textAlign:'center',fontSize:12,color:C.blue,fontWeight:700}}>📞 Alt 1: {lead.phone2}</a>}
+                {hasPhone2&&<a href={textHref(lead.phone2)} style={{padding:'10px 14px',borderRadius:12,background:'rgba(37,99,235,0.12)',border:'1px solid rgba(37,99,235,0.3)',textDecoration:'none',textAlign:'center',fontSize:12,color:'#3b82f6',fontWeight:700}}>💬</a>}
                 {hasPhone3&&<a href={callHref(lead.phone3)} style={{flex:1,padding:'10px',borderRadius:12,background:C.blueBg,border:`1px solid ${C.blue}33`,textDecoration:'none',textAlign:'center',fontSize:12,color:C.blue,fontWeight:700}}>📞 Alt 2: {lead.phone3}</a>}
+                {hasPhone3&&<a href={textHref(lead.phone3)} style={{padding:'10px 14px',borderRadius:12,background:'rgba(37,99,235,0.12)',border:'1px solid rgba(37,99,235,0.3)',textDecoration:'none',textAlign:'center',fontSize:12,color:'#3b82f6',fontWeight:700}}>💬</a>}
               </div>
             )}
           </div>
@@ -694,6 +710,29 @@ const CallMode=({lead,allCallable,leadIndex,onClose,onUpdate,onNext,onPrev})=>{
           <textarea value={note} onChange={e=>setNote(e.target.value)} placeholder="What happened on the call..." rows={3}
             style={{width:'100%',background:'#0d0d0d',border:`1px solid ${C.border}`,borderRadius:10,padding:12,color:C.white,fontSize:13,resize:'none',outline:'none',lineHeight:1.5}}/>
         </div>
+
+        {/* Call Log History */}
+        {lead.callLog&&lead.callLog.length>0&&(
+          <div style={{background:C.card2,borderRadius:16,border:`1px solid ${C.border}`,padding:16,marginBottom:14}}>
+            <div style={{fontSize:10,fontWeight:700,color:C.inkM,marginBottom:10,textTransform:'uppercase',letterSpacing:1}}>Call Log ({lead.callLog.length})</div>
+            <div style={{maxHeight:160,overflowY:'auto'}}>
+              {[...lead.callLog].reverse().map((entry,i)=>{
+                const d=new Date(entry.date);
+                const dateStr=`${d.getMonth()+1}/${d.getDate()} ${d.getHours()%12||12}:${String(d.getMinutes()).padStart(2,'0')}${d.getHours()>=12?'pm':'am'}`;
+                const sc=statusColor(entry.outcome);
+                return(
+                  <div key={i} style={{padding:'8px 0',borderBottom:i<lead.callLog.length-1?`1px solid ${C.border}`:'none'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:entry.note?4:0}}>
+                      <span style={{fontSize:11,fontWeight:700,color:sc.c,background:sc.bg,padding:'2px 8px',borderRadius:8}}>{entry.outcome}</span>
+                      <span style={{fontSize:10,color:C.inkL}}>{dateStr}</span>
+                    </div>
+                    {entry.note&&<div style={{fontSize:11,color:C.inkM,lineHeight:1.4,marginTop:2}}>{entry.note}</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Outcome buttons */}
@@ -792,8 +831,8 @@ const LeadsTab=({surplus,setSurplus,foreclosure,setForeclosure,seller,setSeller,
 
   const statusOpts={
     surplus:['Need Skip Trace','Not Contacted','Ready to Call','Called','Left VM','Follow Up','Signed Up','Not Interested','Dead'],
-    foreclosure:['Not Contacted','Called','Left VM','Follow Up','Under Contract','Not Interested','Dead'],
-    seller:['Not Contacted','Called','Left VM','Follow Up','Interested','Under Contract','Signed Up','Not Interested','Dead'],
+    foreclosure:['Cold','Not Contacted','Called','Left VM','Follow Up','Negotiating','Offer Made','Offer Sent','Offer Rejected','Contracted','Dispo','Not Interested','Dead'],
+    seller:['Cold','Not Contacted','Called','Left VM','Follow Up','Negotiating','Offer Made','Offer Sent','Offer Rejected','Contracted','Dispo','Not Interested','Dead'],
   };
 
   return(
@@ -956,9 +995,32 @@ const LeadsTab=({surplus,setSurplus,foreclosure,setForeclosure,seller,setSeller,
 
                 <textarea value={l.notes||''} onChange={e=>upd(l.id,{notes:e.target.value})} placeholder="Notes..." rows={2} style={{width:'100%',padding:'8px 10px',borderRadius:8,border:`1px solid ${C.border}`,background:'#0d0d0d',color:C.white,fontSize:12,resize:'none',outline:'none',marginBottom:10}}/>
 
+                {/* Call Log in expanded card */}
+                {l.callLog&&l.callLog.length>0&&(
+                  <div style={{background:'#0d0d0d',borderRadius:10,border:`1px solid ${C.border}`,padding:10,marginBottom:10}}>
+                    <div style={{fontSize:10,fontWeight:700,color:C.inkM,marginBottom:6,textTransform:'uppercase',letterSpacing:1}}>Call Log ({l.callLog.length})</div>
+                    {[...l.callLog].reverse().slice(0,5).map((entry,i)=>{
+                      const d=new Date(entry.date);
+                      const dateStr=`${d.getMonth()+1}/${d.getDate()} ${d.getHours()%12||12}:${String(d.getMinutes()).padStart(2,'0')}${d.getHours()>=12?'pm':'am'}`;
+                      const sc=statusColor(entry.outcome);
+                      return(
+                        <div key={i} style={{padding:'5px 0',borderBottom:i<Math.min(l.callLog.length,5)-1?`1px solid ${C.border}`:'none'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                            <span style={{fontSize:10,fontWeight:700,color:sc.c}}>{entry.outcome}</span>
+                            <span style={{fontSize:9,color:C.inkL}}>{dateStr}</span>
+                          </div>
+                          {entry.note&&<div style={{fontSize:10,color:C.inkM,marginTop:1}}>{entry.note}</div>}
+                        </div>
+                      );
+                    })}
+                    {l.callLog.length>5&&<div style={{fontSize:10,color:C.inkL,marginTop:4,textAlign:'center'}}>+{l.callLog.length-5} more — open Call Mode to see all</div>}
+                  </div>
+                )}
+
                 <div style={{display:'flex',gap:8}}>
                   {l.phone&&<button onClick={()=>onCallMode(l,subTab,callable)} style={{flex:1,padding:'10px',borderRadius:10,background:C.green,border:'none',color:'#000',fontSize:13,fontWeight:800,cursor:'pointer'}}>📞 Call Mode</button>}
                   {l.phone&&<a href={callHref(l.phone)} style={{padding:'10px 14px',borderRadius:10,background:C.greenBg,border:`1px solid ${C.green}44`,color:C.green,fontSize:13,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center'}}>Dial</a>}
+                  {l.phone&&<a href={textHref(l.phone)} style={{padding:'10px 14px',borderRadius:10,background:'rgba(37,99,235,0.12)',border:'1px solid rgba(37,99,235,0.3)',color:'#3b82f6',fontSize:13,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center'}}>💬</a>}
                   <button onClick={()=>remove(l.id)} style={{padding:'10px 12px',borderRadius:10,background:C.redBg,border:`1px solid ${C.red}33`,color:C.red,fontSize:12,cursor:'pointer',fontWeight:700}}>🗑</button>
                 </div>
               </div>
@@ -1140,6 +1202,7 @@ const AgencyTab=({clients,setClients,onCallMode})=>{
               <div style={{display:'flex',gap:8}}>
                 {c.phone&&<button onClick={()=>onCallMode({...c,type:'agency'},null,[])} style={{flex:1,padding:'10px',borderRadius:10,background:C.green,border:'none',color:'#000',fontSize:13,fontWeight:800,cursor:'pointer'}}>📞 Call Mode</button>}
                 {c.phone&&<a href={callHref(c.phone)} style={{padding:'10px 14px',borderRadius:10,background:C.greenBg,border:`1px solid ${C.green}44`,color:C.green,fontSize:13,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center'}}>Dial</a>}
+                {c.phone&&<a href={textHref(c.phone)} style={{padding:'10px 14px',borderRadius:10,background:'rgba(37,99,235,0.12)',border:'1px solid rgba(37,99,235,0.3)',color:'#3b82f6',fontSize:13,fontWeight:700,textDecoration:'none',display:'flex',alignItems:'center'}}>💬</a>}
               </div>
             </div>
           )}
@@ -1569,7 +1632,7 @@ const App=()=>{
       {!callState&&(
         <div style={{position:'fixed',bottom:0,left:'50%',transform:'translateX(-50%)',width:'100%',maxWidth:480,background:'rgba(10,10,10,0.97)',backdropFilter:'blur(20px)',borderTop:`1px solid ${C.border}`,zIndex:100}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:6,padding:'7px 16px 5px',borderBottom:`1px solid ${C.border}`}}>
-            <span style={{fontSize:10,color:C.inkL,fontWeight:600,marginRight:2}}>CALL VIA</span>
+            <span style={{fontSize:10,color:C.inkL,fontWeight:600,marginRight:2}}>CALL & TEXT VIA</span>
             <button onClick={()=>useGV&&toggleGV()} style={{padding:'3px 12px',borderRadius:20,fontSize:11,fontWeight:700,cursor:'pointer',border:`1px solid ${C.green}66`,background:!useGV?C.greenBg:'transparent',color:!useGV?C.green:'#555',transition:'all 0.2s'}}>📱 Personal</button>
             <button onClick={()=>!useGV&&toggleGV()} style={{padding:'3px 12px',borderRadius:20,fontSize:11,fontWeight:700,cursor:'pointer',border:'1px solid rgba(66,133,244,0.4)',background:useGV?'rgba(66,133,244,0.15)':'transparent',color:useGV?'#4285f4':'#555',transition:'all 0.2s'}}>📞 Google Voice</button>
           </div>
